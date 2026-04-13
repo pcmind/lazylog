@@ -345,7 +345,7 @@ async fn main() -> Result<()> {
             ), status_area);
 
             if cmd_handler.mode == commands::Mode::Help {
-                ui::help::render_help_popup(f, &cmd_handler.registry, cmd_handler.help_selected);
+                ui::help::render_help_popup(f, &cmd_handler.registry, cmd_handler.help_selected, &cmd_handler.help_filter);
             }
 
         })?;

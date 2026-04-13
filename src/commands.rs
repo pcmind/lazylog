@@ -117,6 +117,7 @@ pub struct KeyBinding {
     pub label: &'static str,
     pub description: &'static str,
     pub context: BindingContext,
+    pub show_in_bar: bool,
 }
 
 impl KeyBinding {
@@ -133,72 +134,72 @@ impl KeyRegistry {
     pub fn default_bindings() -> Self {
         let mut bindings = Vec::new();
         
-        let push1 = |b: &mut Vec<KeyBinding>, code, modifiers, action, label, description, context| {
+        let push1 = |b: &mut Vec<KeyBinding>, code, modifiers, action, label, description, context, show_in_bar| {
             b.push(KeyBinding { 
                 sequence: vec![KeyCombo::new(code, modifiers)], 
-                action, label, description, context 
+                action, label, description, context, show_in_bar 
             });
         };
 
-        let push2 = |b: &mut Vec<KeyBinding>, c1, c2, action, label, description, context| {
+        let push2 = |b: &mut Vec<KeyBinding>, c1, c2, action, label, description, context, show_in_bar| {
             b.push(KeyBinding {
                 sequence: vec![KeyCombo::new(KeyCode::Char(c1), KeyModifiers::empty()), KeyCombo::new(KeyCode::Char(c2), KeyModifiers::empty())],
-                action, label, description, context
+                action, label, description, context, show_in_bar
             });
         };
         
-        // Core navigation
-        push1(&mut bindings, KeyCode::Char('q'), KeyModifiers::empty(), ActionId::Quit, "Quit", "Quit lazylog", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('j'), KeyModifiers::empty(), ActionId::ScrollDown, "Down", "Scroll down", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Down, KeyModifiers::empty(), ActionId::ScrollDown, "Down", "Scroll down", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('k'), KeyModifiers::empty(), ActionId::ScrollUp, "Up", "Scroll up", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Up, KeyModifiers::empty(), ActionId::ScrollUp, "Up", "Scroll up", BindingContext::Always);
+        // Core navigation (hidden from bar — discoverable via ? help)
+        push1(&mut bindings, KeyCode::Char('q'), KeyModifiers::empty(), ActionId::Quit, "Quit", "Quit lazylog", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('j'), KeyModifiers::empty(), ActionId::ScrollDown, "Down", "Scroll down", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::Down, KeyModifiers::empty(), ActionId::ScrollDown, "Down", "Scroll down", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::Char('k'), KeyModifiers::empty(), ActionId::ScrollUp, "Up", "Scroll up", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::Up, KeyModifiers::empty(), ActionId::ScrollUp, "Up", "Scroll up", BindingContext::Always, false);
 
-        // Page / half-page navigation
-        push1(&mut bindings, KeyCode::Char('d'), KeyModifiers::CONTROL, ActionId::HalfPageDown, "½PgDn", "Half page down", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('u'), KeyModifiers::CONTROL, ActionId::HalfPageUp, "½PgUp", "Half page up", BindingContext::Always);
-        push1(&mut bindings, KeyCode::PageDown, KeyModifiers::empty(), ActionId::PageDown, "PgDn", "Page down", BindingContext::Always);
-        push1(&mut bindings, KeyCode::PageUp, KeyModifiers::empty(), ActionId::PageUp, "PgUp", "Page up", BindingContext::Always);
+        // Page / half-page navigation (hidden)
+        push1(&mut bindings, KeyCode::Char('d'), KeyModifiers::CONTROL, ActionId::HalfPageDown, "½PgDn", "Half page down", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::Char('u'), KeyModifiers::CONTROL, ActionId::HalfPageUp, "½PgUp", "Half page up", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::PageDown, KeyModifiers::empty(), ActionId::PageDown, "PgDn", "Page down", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::PageUp, KeyModifiers::empty(), ActionId::PageUp, "PgUp", "Page up", BindingContext::Always, false);
 
-        // Goto top/bottom
-        push1(&mut bindings, KeyCode::Char('g'), KeyModifiers::SHIFT, ActionId::GotoBottom, "Bottom", "Go to last line", BindingContext::Always);
-        push2(&mut bindings, 'g', 'g', ActionId::GotoTop, "Top", "Go to first line", BindingContext::Always);
+        // Goto top/bottom (hidden)
+        push1(&mut bindings, KeyCode::Char('g'), KeyModifiers::SHIFT, ActionId::GotoBottom, "Bottom", "Go to last line", BindingContext::Always, false);
+        push2(&mut bindings, 'g', 'g', ActionId::GotoTop, "Top", "Go to first line", BindingContext::Always, false);
 
-        // Horizontal scroll
-        push1(&mut bindings, KeyCode::Char('h'), KeyModifiers::empty(), ActionId::ScrollLeft, "Left", "Scroll left", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Left, KeyModifiers::empty(), ActionId::ScrollLeft, "Left", "Scroll left", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('l'), KeyModifiers::empty(), ActionId::ScrollRight, "Right", "Scroll right", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Right, KeyModifiers::empty(), ActionId::ScrollRight, "Right", "Scroll right", BindingContext::Always);
+        // Horizontal scroll (hidden)
+        push1(&mut bindings, KeyCode::Char('h'), KeyModifiers::empty(), ActionId::ScrollLeft, "Left", "Scroll left", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::Left, KeyModifiers::empty(), ActionId::ScrollLeft, "Left", "Scroll left", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::Char('l'), KeyModifiers::empty(), ActionId::ScrollRight, "Right", "Scroll right", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::Right, KeyModifiers::empty(), ActionId::ScrollRight, "Right", "Scroll right", BindingContext::Always, false);
 
-        // Pane navigation
-        push1(&mut bindings, KeyCode::Tab, KeyModifiers::empty(), ActionId::NextPane, "NextPane", "Focus next pane", BindingContext::Always);
-        push1(&mut bindings, KeyCode::BackTab, KeyModifiers::SHIFT, ActionId::PrevPane, "PrevPane", "Focus previous pane", BindingContext::Always);
+        // Pane navigation (hidden)
+        push1(&mut bindings, KeyCode::Tab, KeyModifiers::empty(), ActionId::NextPane, "NextPane", "Focus next pane", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::BackTab, KeyModifiers::SHIFT, ActionId::PrevPane, "PrevPane", "Focus previous pane", BindingContext::Always, false);
 
-        // Filter
-        push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::empty(), ActionId::NewFilter, "Filter", "Create a new filter", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::CONTROL, ActionId::NewFilter, "Filter", "Create a new filter", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('s'), KeyModifiers::empty(), ActionId::StackFilter, "Stack", "Stack filter on current view", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('e'), KeyModifiers::empty(), ActionId::EditFilter, "Edit", "Edit the current filter", BindingContext::FilterPane);
-        push1(&mut bindings, KeyCode::Char('m'), KeyModifiers::empty(), ActionId::ToggleBookmark, "Mark", "Mark/Unmark selected line", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::empty(), ActionId::ClosePane, "Close", "Close current pane", BindingContext::FilterPane);
-        push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::SHIFT, ActionId::CloseOtherPanes, "Close Other", "Close all other panes", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('?'), KeyModifiers::empty(), ActionId::ShowHelp, "Help", "Show keybindings menu", BindingContext::Always);
+        // Filter (visible)
+        push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::empty(), ActionId::NewFilter, "Filter", "Create a new filter", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::CONTROL, ActionId::NewFilter, "Filter", "Create a new filter", BindingContext::Always, false);
+        push1(&mut bindings, KeyCode::Char('s'), KeyModifiers::empty(), ActionId::StackFilter, "Stack", "Stack filter on current view", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('e'), KeyModifiers::empty(), ActionId::EditFilter, "Edit", "Edit the current filter", BindingContext::FilterPane, true);
+        push1(&mut bindings, KeyCode::Char('m'), KeyModifiers::empty(), ActionId::ToggleBookmark, "Mark", "Mark/Unmark selected line", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::empty(), ActionId::ClosePane, "Close", "Close current pane", BindingContext::FilterPane, true);
+        push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::SHIFT, ActionId::CloseOtherPanes, "Close Other", "Close all other panes", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('?'), KeyModifiers::empty(), ActionId::ShowHelp, "Help", "Show keybindings menu", BindingContext::Always, true);
 
-        // Search
-        push1(&mut bindings, KeyCode::Char('/'), KeyModifiers::empty(), ActionId::BeginSearch, "Search", "Search in current view", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('n'), KeyModifiers::empty(), ActionId::NextSearchResult, "Next", "Next search result", BindingContext::Always);
-        push1(&mut bindings, KeyCode::Char('n'), KeyModifiers::SHIFT, ActionId::PrevSearchResult, "Prev", "Previous search result", BindingContext::Always);
+        // Search (visible)
+        push1(&mut bindings, KeyCode::Char('/'), KeyModifiers::empty(), ActionId::BeginSearch, "Search", "Search in current view", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('n'), KeyModifiers::empty(), ActionId::NextSearchResult, "Next", "Next search result", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('n'), KeyModifiers::SHIFT, ActionId::PrevSearchResult, "Prev", "Previous search result", BindingContext::Always, true);
 
-        // Follow mode
-        push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::SHIFT, ActionId::ToggleFollow, "Follow", "Toggle follow/tail mode", BindingContext::Always);
+        // Follow mode (visible)
+        push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::SHIFT, ActionId::ToggleFollow, "Follow", "Toggle follow/tail mode", BindingContext::Always, true);
 
-        // Parameters prefix
-        push2(&mut bindings, 'p', 'r', ActionId::ToggleRegex, "Regex", "Toggle regex on/off", BindingContext::FilterPane);
-        push2(&mut bindings, 'p', 'n', ActionId::ToggleNegate, "Negate", "Toggle negate filter", BindingContext::FilterPane);
-        push2(&mut bindings, 'p', 'b', ActionId::ToggleInterleave, "Bookmarks", "Toggle viewing bookmarked lines", BindingContext::FilterPane);
+        // Parameters prefix (visible)
+        push2(&mut bindings, 'p', 'r', ActionId::ToggleRegex, "Regex", "Toggle regex on/off", BindingContext::FilterPane, true);
+        push2(&mut bindings, 'p', 'n', ActionId::ToggleNegate, "Negate", "Toggle negate filter", BindingContext::FilterPane, true);
+        push2(&mut bindings, 'p', 'b', ActionId::ToggleInterleave, "Bookmarks", "Toggle viewing bookmarked lines", BindingContext::FilterPane, true);
 
-        // Visual mode bindings
-        push1(&mut bindings, KeyCode::Char('y'), KeyModifiers::empty(), ActionId::Yank, "Yank", "Copy selected lines to clipboard", BindingContext::VisualMode);
+        // Visual mode bindings (visible)
+        push1(&mut bindings, KeyCode::Char('y'), KeyModifiers::empty(), ActionId::Yank, "Yank", "Copy selected lines to clipboard", BindingContext::VisualMode, true);
 
         Self { bindings }
     }
@@ -234,6 +235,9 @@ impl KeyRegistry {
 
         for b in &self.bindings {
             if !b.sequence.starts_with(pending) { continue; }
+
+            // When no pending sequence, only show important bindings
+            if pending.is_empty() && !b.show_in_bar { continue; }
             
             let context_match = match (b.context, context) {
                 (BindingContext::Always, BindingContextWrapper::VisualMode) => {
@@ -321,6 +325,8 @@ pub struct CommandHandler {
     // Search state
     pub search_input: String,
     pub search_query: Option<String>,
+    // Help filter state
+    pub help_filter: String,
 }
 
 impl CommandHandler {
@@ -335,6 +341,7 @@ impl CommandHandler {
             registry: KeyRegistry::default_bindings(),
             search_input: String::new(),
             search_query: None,
+            help_filter: String::new(),
         }
     }
 
@@ -485,27 +492,69 @@ impl CommandHandler {
         }
     }
 
+    /// Filtered bindings count for help navigation bounds
+    fn help_filtered_count(&self) -> usize {
+        if self.help_filter.is_empty() {
+            return self.registry.all_bindings().len();
+        }
+        let filter_lower = self.help_filter.to_lowercase();
+        self.registry.all_bindings().iter().filter(|b| {
+            b.description.to_lowercase().contains(&filter_lower)
+            || b.label.to_lowercase().contains(&filter_lower)
+            || b.display_key().to_lowercase().contains(&filter_lower)
+        }).count()
+    }
+
     fn handle_help(&mut self, key: KeyEvent) -> Action {
         match key.code {
-            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('?') => {
+            KeyCode::Esc => {
                 self.mode = Mode::Normal;
+                self.help_filter.clear();
+                self.help_selected = 0;
                 Action::None
             }
-            KeyCode::Down | KeyCode::Char('j') => {
-                let items_count = self.registry.all_bindings().len();
-                if self.help_selected + 1 < items_count {
+            KeyCode::Down => {
+                let count = self.help_filtered_count();
+                if count > 0 && self.help_selected + 1 < count {
                     self.help_selected += 1;
                 }
                 Action::None
             }
-            KeyCode::Up | KeyCode::Char('k') => {
+            KeyCode::Up => {
                 self.help_selected = self.help_selected.saturating_sub(1);
                 Action::None
             }
+            KeyCode::Backspace => {
+                self.help_filter.pop();
+                self.help_selected = 0;
+                Action::None
+            }
             KeyCode::Enter => {
-                self.mode = Mode::Normal;
-                let action_id = self.registry.all_bindings()[self.help_selected].action;
-                self.execute_action(action_id, 0)
+                // Find the actual binding at the selected filtered index
+                let filter_lower = self.help_filter.to_lowercase();
+                let binding = if self.help_filter.is_empty() {
+                    self.registry.all_bindings().get(self.help_selected)
+                } else {
+                    self.registry.all_bindings().iter().filter(|b| {
+                        b.description.to_lowercase().contains(&filter_lower)
+                        || b.label.to_lowercase().contains(&filter_lower)
+                        || b.display_key().to_lowercase().contains(&filter_lower)
+                    }).nth(self.help_selected)
+                };
+                if let Some(b) = binding {
+                    let action_id = b.action;
+                    self.mode = Mode::Normal;
+                    self.help_filter.clear();
+                    self.help_selected = 0;
+                    self.execute_action(action_id, 0)
+                } else {
+                    Action::None
+                }
+            }
+            KeyCode::Char(c) => {
+                self.help_filter.push(c);
+                self.help_selected = 0; // Reset selection when filter changes
+                Action::None
             }
             _ => Action::None,
         }
