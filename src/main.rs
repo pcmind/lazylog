@@ -12,7 +12,51 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::time::Duration;
 use events::{Events, Event};
-use crossterm::event::{KeyCode, KeyModifiers};
+
+/// Split a line's text into styled spans, highlighting all occurrences of `query`
+/// (case-insensitive). Matched substrings get `highlight_style`, the rest get `base_style`.
+fn build_search_spans(
+    text: &str,
+    query: &str,
+    base_style: ratatui::style::Style,
+    highlight_style: ratatui::style::Style,
+) -> Vec<ratatui::text::Span<'static>> {
+    if query.is_empty() {
+        return vec![ratatui::text::Span::styled(text.to_string(), base_style)];
+    }
+
+    let text_lower = text.to_lowercase();
+    let query_lower = query.to_lowercase();
+    let mut spans = Vec::new();
+    let mut last_end = 0;
+
+    for (start, _) in text_lower.match_indices(&query_lower) {
+        if start > last_end {
+            spans.push(ratatui::text::Span::styled(
+                text[last_end..start].to_string(),
+                base_style,
+            ));
+        }
+        spans.push(ratatui::text::Span::styled(
+            text[start..start + query.len()].to_string(),
+            highlight_style,
+        ));
+        last_end = start + query.len();
+    }
+
+    if last_end < text.len() {
+        spans.push(ratatui::text::Span::styled(
+            text[last_end..].to_string(),
+            base_style,
+        ));
+    }
+
+    if spans.is_empty() {
+        spans.push(ratatui::text::Span::styled(text.to_string(), base_style));
+    }
+
+    spans
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -40,14 +84,31 @@ async fn main() -> Result<()> {
         let mut total_lines = 0;
         let mut file_size: u64 = 0;
         let mut current_line = 0;
+        let mut active_is_following = false;
 
         if !app.tabs.is_empty() {
             let tab = &mut app.tabs[app.active_tab];
             let num_panes = tab.panes.len();
             let content_height = terminal_size.height.saturating_sub(2) as usize; // Tab bar + Status bar 
-            let individual_height = content_height / num_panes.max(1);
+            let collapsed_count = tab.panes.iter().enumerate()
+                .filter(|(i, p)| p.is_filter && *i != tab.active_pane)
+                .count();
+            let expanded_count = num_panes - collapsed_count;
+            let individual_height = content_height.saturating_sub(collapsed_count) / expanded_count.max(1);
 
-            current_line = tab.panes[tab.active_pane].selected_line;
+            current_line = if !tab.panes.is_empty() {
+                let pane = &tab.panes[tab.active_pane];
+                if pane.is_filter {
+                    let ml = pane.matched_lines.try_read();
+                    if let Ok(ml_guard) = ml {
+                        ml_guard.get(pane.selected_line).copied().unwrap_or(0)
+                    } else { 0 }
+                } else {
+                    pane.selected_line
+                }
+            } else { 0 };
+
+            active_is_following = tab.panes[tab.active_pane].is_following;
 
             // Gather metrics safely
             {
@@ -57,16 +118,21 @@ async fn main() -> Result<()> {
             }
 
             // Update bounds
-            for pane in &mut tab.panes {
-                pane.height = individual_height;
-                if pane.height > 2 { 
-                    // account for borders realistically
-                    pane.height -= 2; 
-                } 
-                if pane.selected_line < pane.scroll_offset {
-                    pane.scroll_offset = pane.selected_line;
-                } else if pane.selected_line >= pane.scroll_offset + pane.height {
-                    pane.scroll_offset = pane.selected_line + 1 - pane.height;
+            for (i, pane) in tab.panes.iter_mut().enumerate() {
+                if pane.is_filter && i != tab.active_pane {
+                    pane.height = 0; // collapsed
+                } else {
+                    pane.height = individual_height;
+                    if pane.height > 2 { 
+                        pane.height -= 2; 
+                    } 
+                }
+                if pane.height > 0 {
+                    if pane.selected_line < pane.scroll_offset {
+                        pane.scroll_offset = pane.selected_line;
+                    } else if pane.selected_line >= pane.scroll_offset + pane.height {
+                        pane.scroll_offset = pane.selected_line + 1 - pane.height;
+                    }
                 }
             }
 
@@ -76,7 +142,7 @@ async fn main() -> Result<()> {
                 let pane = &tab.panes[p_idx];
                 if pane.is_filter {
                     let matched_lines = pane.matched_lines.read().await;
-                    let mut visible_indices: Vec<usize>;
+                    let visible_indices: Vec<usize>;
                     
                     if pane.show_bookmarks {
                         let mut book_vec: Vec<usize> = tab.bookmarks.iter().copied().collect();
@@ -142,6 +208,9 @@ async fn main() -> Result<()> {
             pane_contents.insert(0, main_pane_info);
         }
 
+        // Capture state for rendering closure
+        let search_query_for_render = cmd_handler.search_query.clone();
+
         terminal.draw(|f| {
             let (tabs_area, main_area, status_area) = ui::layout::LayoutTree::split_main(f.size());
             
@@ -149,6 +218,8 @@ async fn main() -> Result<()> {
             use ratatui::layout::{Layout, Direction, Constraint};
             use ratatui::text::{Span, Line};
             use ratatui::style::{Color, Modifier, Style};
+
+            let search_highlight_style = Style::default().bg(Color::Yellow).fg(Color::Black).add_modifier(Modifier::BOLD);
 
             // 1. Draw Tabs
             let tab_info = if app.tabs.is_empty() {
@@ -161,43 +232,89 @@ async fn main() -> Result<()> {
             // 2. Draw Main Content (Panes)
             if !app.tabs.is_empty() {
                 let tab = &app.tabs[app.active_tab];
-                let num_panes = tab.panes.len() as u16;
-                let constraints: Vec<Constraint> = (0..num_panes).map(|_| Constraint::Ratio(1, num_panes as u32)).collect();
+                let expanded_panes = tab.panes.iter().enumerate()
+                    .filter(|(i, p)| !(p.is_filter && *i != tab.active_pane))
+                    .count() as u32;
+                let constraints: Vec<Constraint> = tab.panes.iter().enumerate().map(|(i, pane)| {
+                    if pane.is_filter && i != tab.active_pane {
+                        Constraint::Length(1)
+                    } else {
+                        Constraint::Ratio(1, expanded_panes)
+                    }
+                }).collect();
                 let pane_rects = Layout::default().direction(Direction::Vertical).constraints(constraints).split(main_area);
                 
                 for (i, pane) in tab.panes.iter().enumerate() {
+                    let h_offset = pane.horizontal_offset;
                     let mut text_lines = Vec::new();
                     for (absolute_line, is_selected, line_text) in &pane_contents[i] {
                         let is_marked = tab.bookmarks.contains(absolute_line);
                         let mark_icon = if is_marked { "★ " } else { "  " };
                         let prefix = format!("{}{:>5} │ ", mark_icon, absolute_line);
                         
-                        let mut style = Style::default();
+                        let mut style = Style::default().fg(Color::White);
                         if *is_selected {
                             if i == tab.active_pane {
                                 style = style.bg(Color::Rgb(60, 60, 60)).add_modifier(Modifier::BOLD);
                             } else {
                                 style = style.bg(Color::Rgb(40, 40, 40));
                             }
+                        } else if let commands::Mode::Visual { anchor_line } = cmd_handler.mode {
+                            if i == tab.active_pane {
+                                let start = anchor_line.min(current_line);
+                                let end = anchor_line.max(current_line);
+                                if *absolute_line >= start && *absolute_line <= end {
+                                    style = style.bg(Color::Rgb(20, 20, 80));
+                                }
+                            }
                         }
                         
-                        let span_prefix = Span::styled(prefix, style.clone().fg(if is_marked { Color::Red } else { Color::Yellow }));
-                        let span_content = Span::styled(line_text.clone(), style);
-                        text_lines.push(Line::from(vec![span_prefix, span_content]));
+                        let span_prefix = Span::styled(prefix, style.fg(if is_marked { Color::Red } else { Color::Yellow }));
+
+                        // Apply horizontal offset
+                        let display_text = if h_offset < line_text.len() {
+                            &line_text[h_offset..]
+                        } else if h_offset > 0 && !line_text.is_empty() {
+                            ""
+                        } else {
+                            line_text.as_str()
+                        };
+
+                        // Build content spans with search highlighting
+                        let content_spans = if let Some(ref sq) = search_query_for_render {
+                            build_search_spans(display_text, sq, style, search_highlight_style)
+                        } else {
+                            vec![Span::styled(display_text.to_string(), style)]
+                        };
+
+                        let mut line_spans = vec![span_prefix];
+                        line_spans.extend(content_spans);
+                        text_lines.push(Line::from(line_spans));
                     }
 
+                    let is_collapsed = pane.is_filter && i != tab.active_pane;
                     let title = if pane.is_filter {
                         let r_flag = if pane.is_regex { "R" } else { "S" };
+                        let n_flag = if pane.is_negated { "N" } else { "-" };
                         let b_flag = if pane.show_bookmarks { "B" } else { "-" };
-                        format!(" [{}] Filter: {} [{}/{}] ", i, pane.filter_query.as_deref().unwrap_or("*"), r_flag, b_flag)
+                        let indicator = if is_collapsed { "▶" } else { "▼" };
+                        format!(" {} [{}] Filter: {} [{}/{}/{}] ", indicator, i, pane.filter_query.as_deref().unwrap_or("*"), r_flag, n_flag, b_flag)
                     } else {
-                        format!(" [{}] {} ", i, tab.name)
+                        let follow_mark = if pane.is_following { " ⟳" } else { "" };
+                        format!(" [{}] {}{} ", i, tab.name, follow_mark)
                     };
 
-                    let block = Block::default()
-                        .borders(Borders::ALL)
-                        .title(title)
-                        .border_style(if i == tab.active_pane { ratatui::style::Style::default().fg(ratatui::style::Color::Yellow) } else { ratatui::style::Style::default() });
+                    let block = if is_collapsed {
+                        Block::default()
+                            .borders(Borders::TOP)
+                            .title(title)
+                            .border_style(Style::default().fg(Color::DarkGray))
+                    } else {
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(title)
+                            .border_style(if i == tab.active_pane { Style::default().fg(Color::Yellow) } else { Style::default() })
+                    };
                         
                     f.render_widget(Paragraph::new(text_lines).block(block), pane_rects[i]);
                 }
@@ -213,14 +330,31 @@ async fn main() -> Result<()> {
                 false
             };
             
-            f.render_widget(ui::status_bar::StatusBar::render(&cmd_handler.mode, current_line, total_lines, file_size, &cmd_handler.filter_input, is_filter_pane), status_area);
+            f.render_widget(ui::status_bar::StatusBar::render(
+                &cmd_handler.registry,
+                &cmd_handler.mode,
+                current_line,
+                total_lines,
+                file_size,
+                &cmd_handler.filter_input,
+                is_filter_pane,
+                &cmd_handler.pending_keys,
+                active_is_following,
+                &cmd_handler.search_input,
+                &cmd_handler.search_query,
+            ), status_area);
+
+            if cmd_handler.mode == commands::Mode::Help {
+                ui::help::render_help_popup(f, &cmd_handler.registry, cmd_handler.help_selected);
+            }
 
         })?;
 
         if let Some(event) = events.next().await {
             match event {
                 Event::Key(key) => {
-                    let action = cmd_handler.handle_key(key);
+                    cmd_handler.check_timeout();
+                    let action = cmd_handler.handle_key(key, current_line);
                     match action {
                         commands::Action::Quit => {
                             app.quit();
@@ -228,13 +362,65 @@ async fn main() -> Result<()> {
                         commands::Action::ScrollDown => {
                             if !app.tabs.is_empty() {
                                 let tab = &mut app.tabs[app.active_tab];
-                                tab.panes[tab.active_pane].scroll_down();
+                                let max = get_max_lines(tab, tab.active_pane, total_lines).await;
+                                tab.panes[tab.active_pane].scroll_down(max);
                             }
                         }
                         commands::Action::ScrollUp => {
                             if !app.tabs.is_empty() {
                                 let tab = &mut app.tabs[app.active_tab];
                                 tab.panes[tab.active_pane].scroll_up();
+                            }
+                        }
+                        commands::Action::GotoTop => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                tab.panes[tab.active_pane].goto_top();
+                            }
+                        }
+                        commands::Action::GotoBottom => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                let max = get_max_lines(tab, tab.active_pane, total_lines).await;
+                                tab.panes[tab.active_pane].goto_bottom(max);
+                            }
+                        }
+                        commands::Action::HalfPageDown => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                let max = get_max_lines(tab, tab.active_pane, total_lines).await;
+                                tab.panes[tab.active_pane].half_page_down(max);
+                            }
+                        }
+                        commands::Action::HalfPageUp => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                tab.panes[tab.active_pane].half_page_up();
+                            }
+                        }
+                        commands::Action::PageDown => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                let max = get_max_lines(tab, tab.active_pane, total_lines).await;
+                                tab.panes[tab.active_pane].page_down(max);
+                            }
+                        }
+                        commands::Action::PageUp => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                tab.panes[tab.active_pane].page_up();
+                            }
+                        }
+                        commands::Action::ScrollLeft => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                tab.panes[tab.active_pane].scroll_left();
+                            }
+                        }
+                        commands::Action::ScrollRight => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                tab.panes[tab.active_pane].scroll_right();
                             }
                         }
                         // Handle Filter additions and pane navigation
@@ -250,20 +436,26 @@ async fn main() -> Result<()> {
                                 tab.active_pane = tab.active_pane.saturating_sub(1);
                             }
                         }
-                        commands::Action::SubmitFilter(query, is_stacking) => {
+                        commands::Action::SubmitFilter(query, intent) => {
                             if !app.tabs.is_empty() {
                                 let tab = &mut app.tabs[app.active_tab];
                                 let active_idx = tab.active_pane;
                                 
-                                if is_stacking {
-                                    tab.add_filter(query, Some(active_idx));
-                                    tab.active_pane = tab.panes.len() - 1;
-                                } else if tab.panes[active_idx].is_filter {
-                                    tab.panes[active_idx].filter_query = Some(query);
-                                    tab.update_filter_pane(active_idx);
-                                } else {
-                                    tab.add_filter(query, None);
-                                    tab.active_pane = tab.panes.len() - 1;
+                                match intent {
+                                    commands::FilterIntent::Stack => {
+                                        tab.add_filter(query, Some(active_idx));
+                                        tab.active_pane = tab.panes.len() - 1;
+                                    }
+                                    commands::FilterIntent::Edit => {
+                                        if tab.panes[active_idx].is_filter {
+                                            tab.panes[active_idx].filter_query = Some(query);
+                                            tab.update_filter_pane(active_idx);
+                                        }
+                                    }
+                                    commands::FilterIntent::New => {
+                                        tab.add_filter(query, None);
+                                        tab.active_pane = tab.panes.len() - 1;
+                                    }
                                 }
                             }
                         }
@@ -273,6 +465,16 @@ async fn main() -> Result<()> {
                                 let active_pane = tab.active_pane;
                                 if tab.panes[active_pane].is_filter {
                                     tab.panes[active_pane].is_regex = !tab.panes[active_pane].is_regex;
+                                    tab.update_filter_pane(active_pane);
+                                }
+                            }
+                        }
+                        commands::Action::ToggleNegate => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                let active_pane = tab.active_pane;
+                                if tab.panes[active_pane].is_filter {
+                                    tab.panes[active_pane].is_negated = !tab.panes[active_pane].is_negated;
                                     tab.update_filter_pane(active_pane);
                                 }
                             }
@@ -341,12 +543,82 @@ async fn main() -> Result<()> {
                                 }
                             }
                         }
-                        commands::Action::NextMode(_) | commands::Action::None => {}
+                        commands::Action::Yank(anchor) => {
+                            if !app.tabs.is_empty() {
+                                let start = anchor.min(current_line);
+                                let end = anchor.max(current_line);
+                                let count = end.saturating_sub(start) + 1;
+                                
+                                let lines = app.tabs[app.active_tab].reader.read_lines(start, count).await;
+                                let text = lines.join("\n");
+                                
+                                if let Ok(mut clipboard) = arboard::Clipboard::new() {
+                                    let _ = clipboard.set_text(text);
+                                }
+                            }
+                        }
+                        // Search
+                        commands::Action::SubmitSearch(_query) => {
+                            // search_query is already stored in cmd_handler by handle_search
+                            // Jump to first match after current line
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                let ap = tab.active_pane;
+                                let max = get_max_lines(tab, ap, total_lines).await;
+                                jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, true).await;
+                            }
+                        }
+                        commands::Action::NextSearchResult => {
+                            if cmd_handler.search_query.is_some() && !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                let ap = tab.active_pane;
+                                let max = get_max_lines(tab, ap, total_lines).await;
+                                jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, true).await;
+                            }
+                        }
+                        commands::Action::PrevSearchResult => {
+                            if cmd_handler.search_query.is_some() && !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                let ap = tab.active_pane;
+                                let max = get_max_lines(tab, ap, total_lines).await;
+                                jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, false).await;
+                            }
+                        }
+                        // Follow mode
+                        commands::Action::ToggleFollow => {
+                            if !app.tabs.is_empty() {
+                                let tab = &mut app.tabs[app.active_tab];
+                                let ap = tab.active_pane;
+                                tab.panes[ap].is_following = !tab.panes[ap].is_following;
+                                if tab.panes[ap].is_following {
+                                    let max = get_max_lines(tab, ap, total_lines).await;
+                                    tab.panes[ap].goto_bottom(max);
+                                    // Re-enable following (goto_bottom doesn't disable it)
+                                    tab.panes[ap].is_following = true;
+                                }
+                            }
+                        }
+                        commands::Action::BeginSearch
+                        | commands::Action::ClearSearch
+                        | commands::Action::EnterVisual
+                        | commands::Action::ShowHelp
+                        | commands::Action::None => {}
                     }
                 }
 
                 Event::Tick => {
                     app.tick();
+                    // Follow mode: auto-scroll to bottom on tick
+                    if !app.tabs.is_empty() {
+                        let tab = &mut app.tabs[app.active_tab];
+                        let ap = tab.active_pane;
+                        if tab.panes[ap].is_following {
+                            let max = get_max_lines(tab, ap, total_lines).await;
+                            if max > 0 {
+                                tab.panes[ap].selected_line = max.saturating_sub(1);
+                            }
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -361,4 +633,100 @@ async fn main() -> Result<()> {
     std::io::stdout().execute(LeaveAlternateScreen)?;
 
     Ok(())
+}
+
+/// Get the maximum number of lines for a pane (total_lines for main, matched_lines count for filters)
+async fn get_max_lines(tab: &app::Tab, pane_idx: usize, total_lines: usize) -> usize {
+    let pane = &tab.panes[pane_idx];
+    if pane.is_filter {
+        let ml = pane.matched_lines.read().await;
+        if pane.show_bookmarks {
+            // Union of matched + bookmarks
+            let book_count = tab.bookmarks.len();
+            // Approximate: this is an upper bound; exact would require dedup
+            ml.len() + book_count
+        } else {
+            ml.len()
+        }
+    } else {
+        total_lines
+    }
+}
+
+/// Jump to the next (or previous) line matching the search query
+async fn jump_to_search_match(
+    tab: &mut app::Tab,
+    pane_idx: usize,
+    max_lines: usize,
+    search_query: &Option<String>,
+    current_line: usize,
+    forward: bool,
+) {
+    let query = match search_query {
+        Some(q) => q.to_lowercase(),
+        None => return,
+    };
+
+    let pane = &tab.panes[pane_idx];
+
+    if pane.is_filter {
+        // Search within matched lines
+        let matched = pane.matched_lines.read().await;
+        if matched.is_empty() { return; }
+
+        let current_idx = pane.selected_line;
+        let len = matched.len();
+
+        // Read lines around current position to find matches
+        let range: Box<dyn Iterator<Item = usize>> = if forward {
+            if current_idx + 1 < len {
+                Box::new((current_idx + 1..len).chain(0..=current_idx))
+            } else {
+                Box::new((0..len).into_iter())
+            }
+        } else {
+            if current_idx > 0 {
+                Box::new((0..current_idx).rev().chain((current_idx..len).rev()))
+            } else {
+                Box::new((0..len).rev())
+            }
+        };
+
+        for idx in range {
+            let abs_line = matched[idx];
+            let lines = tab.reader.read_specific_lines(&[abs_line]).await;
+            if let Some(line_text) = lines.first() {
+                if line_text.to_lowercase().contains(&query) {
+                    drop(matched);
+                    tab.panes[pane_idx].selected_line = idx;
+                    return;
+                }
+            }
+        }
+    } else {
+        // Main pane: scan forward/backward from current line
+        let scan_count = max_lines.min(5000); // Cap to avoid scanning millions of lines
+        
+        let range: Vec<usize> = if forward {
+            let start = current_line + 1;
+            (0..scan_count).map(|i| (start + i) % max_lines).collect()
+        } else {
+            let start = if current_line == 0 { max_lines.saturating_sub(1) } else { current_line - 1 };
+            (0..scan_count).map(|i| {
+                if i <= start { start - i } else { max_lines - 1 - (i - start - 1) }
+            }).collect()
+        };
+
+        // Read in batches for efficiency
+        let batch_size = 100;
+        for chunk in range.chunks(batch_size) {
+            let lines = tab.reader.read_specific_lines(chunk).await;
+            for (i, line_text) in lines.iter().enumerate() {
+                if line_text.to_lowercase().contains(&query) {
+                    tab.panes[pane_idx].selected_line = chunk[i];
+                    return;
+                }
+            }
+        }
+    }
 }

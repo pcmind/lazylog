@@ -2,7 +2,6 @@ use crate::io::{indexer::Indexer, reader::AsyncReader};
 use crate::ui::pane::Pane;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 pub struct Tab {
     pub name: String,
@@ -115,6 +114,7 @@ impl Tab {
 
         let query = pane.filter_query.clone().unwrap_or_default();
         let is_regex = pane.is_regex;
+        let is_negated = pane.is_negated;
         let matched_lines = pane.matched_lines.clone();
         
         let expected_gen = pane.task_generation.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
@@ -194,11 +194,15 @@ impl Tab {
                         if file.read_exact(&mut buf).await.is_ok() {
                             let content = String::from_utf8_lossy(&buf);
                             
-                            let matched = if let Some(ref r) = regex {
+                            let mut matched = if let Some(ref r) = regex {
                                 r.is_match(&content)
                             } else {
                                 content.to_lowercase().contains(&query_lower)
                             };
+
+                            if is_negated {
+                                matched = !matched;
+                            }
 
                             if matched {
                                 let mut ml = matched_lines.write().await;

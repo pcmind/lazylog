@@ -1,12 +1,12 @@
-use color_eyre::Result;
 use crossterm::event::{Event as CrosstermEvent, KeyEvent, MouseEvent};
-use futures::{FutureExt, StreamExt};
+use futures::StreamExt;
 use crossterm::event::EventStream;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time;
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub enum Event {
     Tick,
     Key(KeyEvent),
