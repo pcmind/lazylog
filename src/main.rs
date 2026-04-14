@@ -138,10 +138,11 @@ async fn prepare_frame(
                 }
             }
             if pane.height > 0 {
-                if pane.selected_line < pane.scroll_offset {
-                    pane.scroll_offset = pane.selected_line;
-                } else if pane.selected_line >= pane.scroll_offset + pane.height {
-                    pane.scroll_offset = pane.selected_line + 1 - pane.height;
+                let padding = 3.min(pane.height.saturating_sub(1) / 2);
+                if pane.selected_line < pane.scroll_offset + padding {
+                    pane.scroll_offset = pane.selected_line.saturating_sub(padding);
+                } else if pane.selected_line >= pane.scroll_offset + pane.height.saturating_sub(padding) {
+                    pane.scroll_offset = (pane.selected_line + padding + 1).saturating_sub(pane.height);
                 }
             }
         }
@@ -199,10 +200,13 @@ async fn prepare_frame(
         if let Some(target) = sync_main_line {
             tab.panes[0].selected_line = target;
             let height = tab.panes[0].height;
-            if tab.panes[0].selected_line < tab.panes[0].scroll_offset {
-                tab.panes[0].scroll_offset = tab.panes[0].selected_line;
-            } else if tab.panes[0].selected_line >= tab.panes[0].scroll_offset + height {
-                tab.panes[0].scroll_offset = tab.panes[0].selected_line + 1 - height;
+            if height > 0 {
+                let padding = 3.min(height.saturating_sub(1) / 2);
+                if tab.panes[0].selected_line < tab.panes[0].scroll_offset + padding {
+                    tab.panes[0].scroll_offset = tab.panes[0].selected_line.saturating_sub(padding);
+                } else if tab.panes[0].selected_line >= tab.panes[0].scroll_offset + height.saturating_sub(padding) {
+                    tab.panes[0].scroll_offset = (tab.panes[0].selected_line + padding + 1).saturating_sub(height);
+                }
             }
         }
 
