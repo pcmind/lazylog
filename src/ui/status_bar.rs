@@ -9,6 +9,28 @@ use ratatui::{
 
 pub struct StatusBar;
 
+fn compact_num(n: usize) -> String {
+    if n < 1000 {
+        n.to_string()
+    } else if n < 1_000_000 {
+        format!("{:.1}K", (n as f64) / 1000.0)
+    } else {
+        format!("{:.1}M", (n as f64) / 1_000_000.0)
+    }
+}
+
+fn compact_size(n: u64) -> String {
+    if n < 1024 {
+        format!("{} B", n)
+    } else if n < 1024 * 1024 {
+        format!("{:.1} KB", (n as f64) / 1024.0)
+    } else if n < 1024 * 1024 * 1024 {
+        format!("{:.1} MB", (n as f64) / 1024.0 / 1024.0)
+    } else {
+        format!("{:.1} GB", (n as f64) / 1024.0 / 1024.0 / 1024.0)
+    }
+}
+
 impl StatusBar {
     pub fn render(cmd: &CommandHandler, ctx: &RenderContext) -> Paragraph<'static> {
         let mut prefix_str = String::new();
@@ -57,9 +79,9 @@ impl StatusBar {
         }
 
         let metrics_str = if ctx.is_filter_pane {
-            format!(" | Match {}/{} | Line {} ", ctx.pane_selected_line + 1, ctx.pane_total_lines, ctx.current_line)
+            format!(" | Match: {} ", compact_num(ctx.pane_total_lines))
         } else if ctx.total_lines > 0 {
-            format!(" | Line {}/{} | Size: {} B ", ctx.pane_selected_line + 1, ctx.pane_total_lines, ctx.file_size)
+            format!(" | Lines: {} | Size: {} ", compact_num(ctx.total_lines), compact_size(ctx.file_size))
         } else {
             String::new()
         };

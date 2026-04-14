@@ -16,7 +16,6 @@ use crate::ui::help::render_help_popup;
 /// Bundles render-time state that doesn't belong to App or CommandHandler.
 pub struct RenderContext {
     pub current_line: usize,
-    pub pane_selected_line: usize,
     pub pane_total_lines: usize,
     pub total_lines: usize,
     pub file_size: u64,
@@ -108,7 +107,7 @@ pub fn draw(
                 for (absolute_line, is_selected, line_text) in &pane_contents[i] {
                     let is_marked = tab.bookmarks.contains(absolute_line);
                     let mark_icon = if is_marked { "★ " } else { "  " };
-                    let prefix = format!("{}{:>5} │ ", mark_icon, absolute_line);
+                    let prefix = format!("{}{:>5} │ ", mark_icon, absolute_line + 1);
 
                     let mut style = Style::default().fg(Color::White);
                     if *is_selected {

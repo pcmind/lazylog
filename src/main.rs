@@ -78,7 +78,6 @@ async fn prepare_frame(
     let mut total_lines = 0;
     let mut file_size: u64 = 0;
     let mut current_line = 0;
-    let mut pane_selected_line = 0;
     let mut pane_total_lines = 0;
     let mut active_is_following = false;
     let mut is_filter_pane = false;
@@ -101,7 +100,6 @@ async fn prepare_frame(
 
         current_line = {
             let pane = &tab.panes[tab.active_pane];
-            pane_selected_line = pane.selected_line;
             if pane.is_filter {
                 let ml = pane.matched_lines.try_read();
                 if let Ok(ml_guard) = ml {
@@ -224,7 +222,6 @@ async fn prepare_frame(
 
     let ctx = RenderContext {
         current_line,
-        pane_selected_line,
         pane_total_lines,
         total_lines,
         file_size,
