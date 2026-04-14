@@ -5,11 +5,11 @@ use ratatui::{
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
     Frame,
 };
-use crate::commands::KeyRegistry;
+use crate::input::keys::KeyRegistry;
 
 pub fn render_help_popup(f: &mut Frame, registry: &KeyRegistry, selected_index: usize, filter: &str) {
     let size = f.size();
-    
+
     // Create a 80x80% area centered
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -75,7 +75,7 @@ pub fn render_help_popup(f: &mut Frame, registry: &KeyRegistry, selected_index: 
     let items: Vec<ListItem> = filtered_bindings.iter().enumerate().map(|(filtered_idx, (_, b))| {
         let key_str = b.display_key();
         let desc = b.description;
-        
+
         let mut style = Style::default().fg(Color::White);
         if filtered_idx == selected_index {
             style = style.bg(Color::Rgb(60, 60, 60)).add_modifier(Modifier::BOLD);
@@ -86,7 +86,7 @@ pub fn render_help_popup(f: &mut Frame, registry: &KeyRegistry, selected_index: 
             Span::raw("│ "),
             Span::styled(format!("{:<30}", desc), style),
         ]);
-        
+
         ListItem::new(content).style(style)
     }).collect();
 

@@ -1,5 +1,6 @@
 use crate::io::{indexer::Indexer, reader::AsyncReader};
-use crate::ui::pane::Pane;
+use crate::io::filter::spawn_filter_task;
+use crate::state::pane::Pane;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -10,7 +11,7 @@ pub struct Tab {
     pub reader: AsyncReader,
     pub panes: Vec<Pane>,
     pub active_pane: usize,
-    pub bookmarks: HashSet<usize>, // Original file line indices
+    pub bookmarks: HashSet<usize>,
 }
 
 impl Tab {
@@ -18,9 +19,9 @@ impl Tab {
         let name = filepath.file_name().unwrap_or_default().to_string_lossy().to_string();
         let indexer = Indexer::new(filepath.clone());
         let reader = AsyncReader::new(filepath.clone(), indexer.offsets.clone());
-        
-        indexer.start(); // Kick off background indexing
-        
+
+        indexer.start();
+
         Self {
             name,
             filepath,
@@ -40,7 +41,7 @@ impl Tab {
     }
 
     pub fn remove_pane(&mut self, idx: usize) {
-        if idx == 0 || idx >= self.panes.len() { return; } 
+        if idx == 0 || idx >= self.panes.len() { return; }
 
         let mut to_remove = vec![idx];
         let mut i = idx + 1;
@@ -65,19 +66,19 @@ impl Tab {
                 pane.parent_pane = Some(parent - shift);
             }
         }
-        
+
         if self.active_pane >= self.panes.len() {
             self.active_pane = self.panes.len() - 1;
         }
     }
 
     pub fn retain_pane(&mut self, target_idx: usize) {
-        if target_idx == 0 || target_idx >= self.panes.len() { 
+        if target_idx == 0 || target_idx >= self.panes.len() {
             let len = self.panes.len();
             for i in (1..len).rev() { self.remove_pane(i); }
-            return; 
+            return;
         }
-        
+
         let mut keepers = vec![0, target_idx];
         let mut curr = target_idx;
         while let Some(parent) = self.panes[curr].parent_pane {
@@ -103,7 +104,7 @@ impl Tab {
                 pane.parent_pane = Some(parent - shift);
             }
         }
-        
+
         let shift = to_remove.iter().filter(|&&r| r < target_idx).count();
         self.active_pane = target_idx - shift;
     }
@@ -116,12 +117,11 @@ impl Tab {
         let is_regex = pane.is_regex;
         let is_negated = pane.is_negated;
         let matched_lines = pane.matched_lines.clone();
-        
+
         let expected_gen = pane.task_generation.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
         let task_generation = pane.task_generation.clone();
 
-        let parent_pane_idx = pane.parent_pane;
-        let parent_matched_arc = if let Some(pidx) = parent_pane_idx {
+        let parent_matched = if let Some(pidx) = pane.parent_pane {
             Some(self.panes[pidx].matched_lines.clone())
         } else {
             None
@@ -130,95 +130,19 @@ impl Tab {
         let offsets = self.indexer.offsets.clone();
         let filepath = self.filepath.clone();
 
-        tokio::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-            if task_generation.load(std::sync::atomic::Ordering::Relaxed) != expected_gen { return; }
-
-            { matched_lines.write().await.clear(); }
-
-            let regex = if is_regex { regex::Regex::new(&query).ok() } else { None };
-            let query_lower = query.to_lowercase(); 
-
-            let mut file = match tokio::fs::File::open(&filepath).await {
-                Ok(f) => f,
-                Err(_) => return,
-            };
-
-            let mut last_processed = 0;
-
-            loop {
-                if task_generation.load(std::sync::atomic::Ordering::Relaxed) != expected_gen { return; }
-
-                let current_offsets = { offsets.read().await.clone() };
-                
-                let source_indices = if let Some(ref arc) = parent_matched_arc {
-                    Some(arc.read().await.clone())
-                } else {
-                    None
-                };
-
-                let target_len = if let Some(ref si) = source_indices {
-                    si.len()
-                } else {
-                    current_offsets.len().saturating_sub(1)
-                };
-
-                if target_len <= last_processed {
-                    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-                    continue;
-                }
-
-                use tokio::io::{AsyncSeekExt, AsyncReadExt};
-
-                for i in last_processed..target_len {
-                    if task_generation.load(std::sync::atomic::Ordering::Relaxed) != expected_gen { return; }
-
-                    let absolute_line = if let Some(ref si) = source_indices {
-                        si[i]
-                    } else {
-                        i
-                    };
-                    
-                    if absolute_line + 1 >= current_offsets.len() {
-                        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                        break;
-                    }
-
-                    let start = current_offsets[absolute_line];
-                    let end = current_offsets[absolute_line + 1];
-                    let bytes = end.saturating_sub(start);
-                    if bytes == 0 { continue; }
-
-                    if file.seek(std::io::SeekFrom::Start(start)).await.is_ok() {
-                        let mut buf = vec![0u8; bytes as usize];
-                        if file.read_exact(&mut buf).await.is_ok() {
-                            let content = String::from_utf8_lossy(&buf);
-                            
-                            let mut matched = if let Some(ref r) = regex {
-                                r.is_match(&content)
-                            } else {
-                                content.to_lowercase().contains(&query_lower)
-                            };
-
-                            if is_negated {
-                                matched = !matched;
-                            }
-
-                            if matched {
-                                let mut ml = matched_lines.write().await;
-                                ml.push(absolute_line);
-                            }
-                        }
-                    }
-                }
-
-                last_processed = target_len;
-            }
-        });
+        spawn_filter_task(
+            filepath,
+            offsets,
+            query,
+            is_regex,
+            is_negated,
+            matched_lines,
+            task_generation,
+            expected_gen,
+            parent_matched,
+        );
     }
 }
-
-
 
 pub struct App {
     pub should_quit: bool,
@@ -238,6 +162,16 @@ impl App {
     pub fn add_tab(&mut self, filepath: PathBuf) {
         self.tabs.push(Tab::new(filepath));
         self.active_tab = self.tabs.len() - 1;
+    }
+
+    /// Returns a mutable reference to the active tab, or None if no tabs exist.
+    pub fn active_tab_mut(&mut self) -> Option<&mut Tab> {
+        self.tabs.get_mut(self.active_tab)
+    }
+
+    /// Returns an immutable reference to the active tab, or None if no tabs exist.
+    pub fn active_tab(&self) -> Option<&Tab> {
+        self.tabs.get(self.active_tab)
     }
 
     pub fn tick(&mut self) {

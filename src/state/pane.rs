@@ -2,7 +2,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::sync::atomic::AtomicUsize;
 
-// Individual Pane logic (content buffer, filtering, bookmarks)
+/// Individual pane state: cursor position, filter settings, matched lines.
 pub struct Pane {
     pub is_filter: bool,
     pub filter_query: Option<String>,
@@ -14,7 +14,7 @@ pub struct Pane {
     pub height: usize,
     pub horizontal_offset: usize,
     pub is_following: bool,
-    // Holds the indices of the original file lines that matched the query
+    /// Indices of original file lines that matched the filter query
     pub matched_lines: Arc<RwLock<Vec<usize>>>,
     pub task_generation: Arc<AtomicUsize>,
     pub parent_pane: Option<usize>,
@@ -25,7 +25,7 @@ impl Pane {
         Self {
             is_filter,
             filter_query,
-            is_regex: false, // Default substring
+            is_regex: false,
             is_negated: false,
             show_bookmarks: false,
             scroll_offset: 0,
