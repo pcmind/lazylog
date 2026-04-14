@@ -21,13 +21,13 @@ fn compact_num(n: usize) -> String {
 
 fn compact_size(n: u64) -> String {
     if n < 1024 {
-        format!("{} B", n)
+        format!("{}B", n)
     } else if n < 1024 * 1024 {
-        format!("{:.1} KB", (n as f64) / 1024.0)
+        format!("{:.1}KB", (n as f64) / 1024.0)
     } else if n < 1024 * 1024 * 1024 {
-        format!("{:.1} MB", (n as f64) / 1024.0 / 1024.0)
+        format!("{:.1}MB", (n as f64) / 1024.0 / 1024.0)
     } else {
-        format!("{:.1} GB", (n as f64) / 1024.0 / 1024.0 / 1024.0)
+        format!("{:.1}GB", (n as f64) / 1024.0 / 1024.0 / 1024.0)
     }
 }
 
@@ -79,9 +79,9 @@ impl StatusBar {
         }
 
         let metrics_str = if ctx.is_filter_pane {
-            format!(" | Match: {} ", compact_num(ctx.pane_total_lines))
+            format!(" | {} Matches ", compact_num(ctx.pane_total_lines))
         } else if ctx.total_lines > 0 {
-            format!(" | Lines: {} | Size: {} ", compact_num(ctx.total_lines), compact_size(ctx.file_size))
+            format!(" | {} Lines({}) ", compact_num(ctx.total_lines), compact_size(ctx.file_size))
         } else {
             String::new()
         };
