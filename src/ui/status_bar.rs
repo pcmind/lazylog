@@ -56,6 +56,21 @@ impl StatusBar {
             ));
         }
 
+        let metrics_str = if ctx.is_filter_pane {
+            format!(" | Match {}/{} | Line {} ", ctx.pane_selected_line + 1, ctx.pane_total_lines, ctx.current_line)
+        } else if ctx.total_lines > 0 {
+            format!(" | Line {}/{} | Size: {} B ", ctx.pane_selected_line + 1, ctx.pane_total_lines, ctx.file_size)
+        } else {
+            String::new()
+        };
+
+        if !metrics_str.is_empty() {
+            spans.push(Span::styled(
+                metrics_str,
+                Style::default().bg(Color::White).fg(Color::Black).add_modifier(Modifier::BOLD),
+            ));
+        }
+
         let mut hints_spans = Vec::new();
         hints_spans.push(Span::raw(" "));
 
@@ -104,15 +119,7 @@ impl StatusBar {
             }
         }
 
-        let metrics_str = if ctx.is_filter_pane {
-            format!("| Match {}/{} | Line {} ", ctx.pane_selected_line + 1, ctx.pane_total_lines, ctx.current_line)
-        } else if ctx.total_lines > 0 {
-            format!("| Line {}/{} | Size: {} B ", ctx.pane_selected_line + 1, ctx.pane_total_lines, ctx.file_size)
-        } else {
-            String::new()
-        };
 
-        hints_spans.push(Span::styled(metrics_str, Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)));
 
         spans.extend(hints_spans);
 
