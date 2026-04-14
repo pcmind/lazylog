@@ -86,10 +86,7 @@ pub async fn dispatch(
             if let Some(tab) = app.active_tab_mut() {
                 let active_idx = tab.active_pane;
                 match intent {
-                    FilterIntent::Stack => {
-                        tab.add_filter(query, Some(active_idx));
-                        tab.active_pane = tab.panes.len() - 1;
-                    }
+
                     FilterIntent::Edit => {
                         if tab.panes[active_idx].is_filter {
                             tab.panes[active_idx].filter_query = Some(query);

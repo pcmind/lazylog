@@ -11,7 +11,7 @@ pub enum Mode {
 pub enum ActionId {
     Quit, ScrollDown, ScrollUp,
     NextPane, PrevPane,
-    NewFilter, StackFilter, EditFilter,
+    NewFilter, EditFilter,
     ToggleRegex, ToggleNegate, ToggleInterleave, ToggleBookmark,
     ClosePane, CloseOtherPanes, ShowHelp,
     Yank,
@@ -32,7 +32,6 @@ pub enum BindingContext { Always, FilterPane, MainPane, VisualMode }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FilterIntent {
     New,
-    Stack,
     Edit,
 }
 

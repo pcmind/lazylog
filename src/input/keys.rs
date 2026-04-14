@@ -140,7 +140,6 @@ impl KeyRegistry {
         // Filter (visible)
         push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::empty(), ActionId::NewFilter, "Filter", "Create a new filter", BindingContext::Always, true);
         push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::CONTROL, ActionId::NewFilter, "Filter", "Create a new filter", BindingContext::Always, false);
-        push1(&mut bindings, KeyCode::Char('s'), KeyModifiers::empty(), ActionId::StackFilter, "Stack", "Stack filter on current view", BindingContext::Always, true);
         push1(&mut bindings, KeyCode::Char('e'), KeyModifiers::empty(), ActionId::EditFilter, "Edit", "Edit the current filter", BindingContext::FilterPane, true);
         push1(&mut bindings, KeyCode::Char('m'), KeyModifiers::empty(), ActionId::ToggleBookmark, "Mark", "Mark/Unmark selected line", BindingContext::Always, true);
         push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::empty(), ActionId::ClosePane, "Close", "Close current pane", BindingContext::FilterPane, true);

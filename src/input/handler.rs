@@ -262,11 +262,7 @@ impl CommandHandler {
                 self.mode = Mode::Filter;
                 Action::None
             }
-            ActionId::StackFilter => {
-                self.filter_intent = FilterIntent::Stack;
-                self.mode = Mode::Filter;
-                Action::None
-            }
+
             ActionId::EditFilter => {
                 self.filter_intent = FilterIntent::Edit;
                 Action::EditFilter
