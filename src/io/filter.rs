@@ -22,6 +22,9 @@ pub fn spawn_filter_task(
         { matched_lines.write().await.clear(); }
 
         let regex = if is_regex { regex::Regex::new(&query).ok() } else { None };
+        if query.is_empty() {
+            return;
+        }
         let query_lower = query.to_lowercase();
 
         let mut file = match tokio::fs::File::open(&filepath).await {

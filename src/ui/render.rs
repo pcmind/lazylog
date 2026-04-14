@@ -86,8 +86,14 @@ pub fn draw(
         let constraints: Vec<Constraint> = tab.panes.iter().enumerate().map(|(i, pane)| {
             if pane.is_filter && i != tab.active_pane {
                 Constraint::Length(1)
+            } else if expanded_panes == 1 {
+                Constraint::Percentage(100)
+            } else if i == 0 {
+                // Main pane gets 2/3 when a filter is active
+                Constraint::Ratio(2, 3)
             } else {
-                Constraint::Ratio(1, expanded_panes)
+                // Active filter pane gets 1/3
+                Constraint::Ratio(1, 3)
             }
         }).collect();
         let pane_rects = Layout::default().direction(Direction::Vertical).constraints(constraints).split(main_area);

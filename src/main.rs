@@ -88,7 +88,7 @@ async fn prepare_frame(
             .filter(|(i, p)| p.is_filter && *i != tab.active_pane)
             .count();
         let expanded_count = num_panes - collapsed_count;
-        let individual_height = content_height.saturating_sub(collapsed_count) / expanded_count.max(1);
+        let usable_height = content_height.saturating_sub(collapsed_count);
 
         current_line = {
             let pane = &tab.panes[tab.active_pane];
@@ -117,7 +117,16 @@ async fn prepare_frame(
             if pane.is_filter && i != tab.active_pane {
                 pane.height = 0;
             } else {
-                pane.height = individual_height;
+                if expanded_count == 1 {
+                    pane.height = usable_height;
+                } else if i == 0 {
+                    // Main pane gets 2/3 when a filter is active
+                    pane.height = (usable_height * 2) / 3;
+                } else {
+                    // Active filter pane gets 1/3
+                    pane.height = usable_height / 3;
+                }
+
                 if pane.height > 2 {
                     pane.height -= 2;
                 }
