@@ -111,7 +111,7 @@ impl KeyRegistry {
         };
 
         // Core navigation (hidden from bar — discoverable via ? help)
-        push1(&mut bindings, KeyCode::Char('q'), KeyModifiers::empty(), ActionId::Quit, "Quit", "Quit lazylog", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('q'), KeyModifiers::empty(), ActionId::Quit, "Quit", "Quit lazylog", BindingContext::Always, false);
         push1(&mut bindings, KeyCode::Char('j'), KeyModifiers::empty(), ActionId::ScrollDown, "Down", "Scroll down", BindingContext::Always, false);
         push1(&mut bindings, KeyCode::Down, KeyModifiers::empty(), ActionId::ScrollDown, "Down", "Scroll down", BindingContext::Always, false);
         push1(&mut bindings, KeyCode::Char('k'), KeyModifiers::empty(), ActionId::ScrollUp, "Up", "Scroll up", BindingContext::Always, false);
@@ -143,7 +143,7 @@ impl KeyRegistry {
         push1(&mut bindings, KeyCode::Char('e'), KeyModifiers::empty(), ActionId::EditFilter, "Edit", "Edit the current filter", BindingContext::FilterPane, true);
         push1(&mut bindings, KeyCode::Char('m'), KeyModifiers::empty(), ActionId::ToggleBookmark, "Mark", "Mark/Unmark selected line", BindingContext::Always, true);
         push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::empty(), ActionId::ClosePane, "Close", "Close current pane", BindingContext::FilterPane, true);
-        push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::SHIFT, ActionId::CloseOtherPanes, "Close Other", "Close all other panes", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::SHIFT, ActionId::CloseOtherPanes, "Close Other", "Close all other panes", BindingContext::Always, false);
         push1(&mut bindings, KeyCode::Char('?'), KeyModifiers::empty(), ActionId::ShowHelp, "Help", "Show keybindings menu", BindingContext::Always, true);
 
         // Search (visible)

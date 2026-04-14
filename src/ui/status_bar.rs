@@ -110,9 +110,15 @@ impl StatusBar {
                         let key_str = next_key.display_key();
                         if displayed_keys.insert(key_str.clone()) {
                             let is_prefix = b.sequence.len() > cmd.pending_keys.len() + 1;
-                            let label = if is_prefix { "Prefix" } else { b.label };
-                            hints_spans.push(Span::styled(format!("[{}] ", key_str), Style::default().fg(Color::Cyan)));
-                            hints_spans.push(Span::styled(format!("{}  ", label), Style::default().fg(Color::White)));
+                            let label = if is_prefix {
+                                match key_str.as_str() {
+                                    "p" => "Params",
+                                    "g" => "Goto",
+                                    _ => "Prefix"
+                                }
+                            } else { b.label };
+                            hints_spans.push(Span::styled(key_str, Style::default().fg(Color::Cyan)));
+                            hints_spans.push(Span::styled(format!(":{} ", label), Style::default().fg(Color::White)));
                         }
                     }
                 }
