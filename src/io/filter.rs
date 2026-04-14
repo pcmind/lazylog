@@ -55,6 +55,7 @@ pub fn spawn_filter_task(
 
             use tokio::io::{AsyncSeekExt, AsyncReadExt};
 
+            let mut processed = 0;
             for i in last_processed..target_len {
                 if task_generation.load(std::sync::atomic::Ordering::Relaxed) != expected_gen { return; }
 
@@ -72,32 +73,35 @@ pub fn spawn_filter_task(
                 let start = current_offsets[absolute_line];
                 let end = current_offsets[absolute_line + 1];
                 let bytes = end.saturating_sub(start);
-                if bytes == 0 { continue; }
+                
+                if bytes > 0 {
+                    if file.seek(std::io::SeekFrom::Start(start)).await.is_ok() {
+                        let mut buf = vec![0u8; bytes as usize];
+                        if file.read_exact(&mut buf).await.is_ok() {
+                            let content = String::from_utf8_lossy(&buf);
 
-                if file.seek(std::io::SeekFrom::Start(start)).await.is_ok() {
-                    let mut buf = vec![0u8; bytes as usize];
-                    if file.read_exact(&mut buf).await.is_ok() {
-                        let content = String::from_utf8_lossy(&buf);
+                            let mut matched = if let Some(ref r) = regex {
+                                r.is_match(&content)
+                            } else {
+                                content.to_lowercase().contains(&query_lower)
+                            };
 
-                        let mut matched = if let Some(ref r) = regex {
-                            r.is_match(&content)
-                        } else {
-                            content.to_lowercase().contains(&query_lower)
-                        };
+                            if is_negated {
+                                matched = !matched;
+                            }
 
-                        if is_negated {
-                            matched = !matched;
-                        }
-
-                        if matched {
-                            let mut ml = matched_lines.write().await;
-                            ml.push(absolute_line);
+                            if matched {
+                                let mut ml = matched_lines.write().await;
+                                ml.push(absolute_line);
+                            }
                         }
                     }
                 }
+                
+                processed += 1;
             }
 
-            last_processed = target_len;
+            last_processed += processed;
         }
     });
 }

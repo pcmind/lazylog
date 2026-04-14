@@ -37,7 +37,16 @@ impl Indexer {
 
             loop {
                 match reader.read(&mut buffer).await {
-                    Ok(0) => break, // EOF
+                    Ok(0) => {
+                        // EOF reached: flush batch and sleep rather than breaking, 
+                        // so we can continually pick up new appended lines (tail -f)
+                        if !batch.is_empty() {
+                            let mut lock = offsets.write().await;
+                            lock.extend_from_slice(&batch);
+                            batch.clear();
+                        }
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    }
                     Ok(bytes_read) => {
                         for i in 0..bytes_read {
                             if buffer[i] == b'\n' {
@@ -53,15 +62,12 @@ impl Indexer {
                             batch.clear();
                         }
                     }
-                    Err(_) => break, // Handle gracefully later
+                    Err(_) => {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                    }
                 }
             }
 
-            // Flush remaining lines
-            if !batch.is_empty() {
-                let mut lock = offsets.write().await;
-                lock.extend_from_slice(&batch);
-            }
         });
     }
 }
