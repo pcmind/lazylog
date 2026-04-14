@@ -27,7 +27,7 @@ impl Pane {
             filter_query,
             is_regex: false,
             is_negated: false,
-            show_bookmarks: false,
+            show_bookmarks: is_filter, // Interleaved bookmarks default to true for filters
             scroll_offset: 0,
             selected_line: 0,
             height: 0,
