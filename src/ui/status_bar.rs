@@ -112,7 +112,7 @@ impl StatusBar {
                             let is_prefix = b.sequence.len() > cmd.pending_keys.len() + 1;
                             let label = if is_prefix {
                                 match key_str.as_str() {
-                                    "p" => "Params",
+                                    "e" => "Edit Filter",
                                     "g" => "Goto",
                                     _ => "Prefix"
                                 }

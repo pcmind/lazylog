@@ -153,11 +153,11 @@ impl KeyRegistry {
         // Follow mode (visible)
         push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::SHIFT, ActionId::ToggleFollow, "Follow", "Toggle follow/tail mode", BindingContext::MainPane, true);
 
-        // Parameters prefix (visible)
-        push2(&mut bindings, 'p', 'e', ActionId::EditFilter, "Edit", "Edit the current filter", BindingContext::FilterPane, true);
-        push2(&mut bindings, 'p', 'r', ActionId::ToggleRegex, "Regex", "Toggle regex on/off", BindingContext::FilterPane, true);
-        push2(&mut bindings, 'p', 'n', ActionId::ToggleNegate, "Negate", "Toggle negate filter", BindingContext::FilterPane, true);
-        push2(&mut bindings, 'p', 'b', ActionId::ToggleInterleave, "Bookmarks", "Toggle viewing bookmarked lines", BindingContext::FilterPane, true);
+        // Edit Filter prefix (visible)
+        push2(&mut bindings, 'e', 'e', ActionId::EditFilter, "Query", "Edit the filter query", BindingContext::FilterPane, true);
+        push2(&mut bindings, 'e', 'r', ActionId::ToggleRegex, "Regex", "Toggle regex on/off", BindingContext::FilterPane, true);
+        push2(&mut bindings, 'e', 'n', ActionId::ToggleNegate, "Negate", "Toggle negate filter", BindingContext::FilterPane, true);
+        push2(&mut bindings, 'e', 'b', ActionId::ToggleInterleave, "Bookmarks", "Toggle viewing bookmarked lines", BindingContext::FilterPane, true);
 
         // Visual mode bindings (visible)
         push1(&mut bindings, KeyCode::Char('y'), KeyModifiers::empty(), ActionId::Yank, "Yank", "Copy selected lines to clipboard", BindingContext::VisualMode, true);
