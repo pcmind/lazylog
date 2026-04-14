@@ -16,6 +16,8 @@ use crate::ui::help::render_help_popup;
 /// Bundles render-time state that doesn't belong to App or CommandHandler.
 pub struct RenderContext {
     pub current_line: usize,
+    pub pane_selected_line: usize,
+    pub pane_total_lines: usize,
     pub total_lines: usize,
     pub file_size: u64,
     pub is_following: bool,

@@ -104,8 +104,10 @@ impl StatusBar {
             }
         }
 
-        let metrics_str = if ctx.total_lines > 0 {
-            format!("| Line {}/{} | Size: {} B ", ctx.current_line, ctx.total_lines, ctx.file_size)
+        let metrics_str = if ctx.is_filter_pane {
+            format!("| Match {}/{} | Line {} ", ctx.pane_selected_line + 1, ctx.pane_total_lines, ctx.current_line)
+        } else if ctx.total_lines > 0 {
+            format!("| Line {}/{} | Size: {} B ", ctx.pane_selected_line + 1, ctx.pane_total_lines, ctx.file_size)
         } else {
             String::new()
         };

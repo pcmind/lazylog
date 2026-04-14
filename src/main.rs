@@ -78,6 +78,8 @@ async fn prepare_frame(
     let mut total_lines = 0;
     let mut file_size: u64 = 0;
     let mut current_line = 0;
+    let mut pane_selected_line = 0;
+    let mut pane_total_lines = 0;
     let mut active_is_following = false;
     let mut is_filter_pane = false;
 
@@ -90,27 +92,33 @@ async fn prepare_frame(
         let expanded_count = num_panes - collapsed_count;
         let usable_height = content_height.saturating_sub(collapsed_count);
 
-        current_line = {
-            let pane = &tab.panes[tab.active_pane];
-            if pane.is_filter {
-                let ml = pane.matched_lines.try_read();
-                if let Ok(ml_guard) = ml {
-                    ml_guard.get(pane.selected_line).copied().unwrap_or(0)
-                } else { 0 }
-            } else {
-                pane.selected_line
-            }
-        };
-
-        active_is_following = tab.panes[tab.active_pane].is_following;
-        is_filter_pane = tab.panes[tab.active_pane].is_filter;
-
         // Gather metrics
         {
             let offsets = tab.indexer.offsets.read().await;
             total_lines = offsets.len().saturating_sub(1);
             file_size = offsets.last().copied().unwrap_or(0);
         }
+
+        current_line = {
+            let pane = &tab.panes[tab.active_pane];
+            pane_selected_line = pane.selected_line;
+            if pane.is_filter {
+                let ml = pane.matched_lines.try_read();
+                if let Ok(ml_guard) = ml {
+                    pane_total_lines = ml_guard.len();
+                    if pane.show_bookmarks {
+                        pane_total_lines += tab.bookmarks.len();
+                    }
+                    ml_guard.get(pane.selected_line).copied().unwrap_or(0)
+                } else { 0 }
+            } else {
+                pane_total_lines = total_lines;
+                pane.selected_line
+            }
+        };
+
+        active_is_following = tab.panes[tab.active_pane].is_following;
+        is_filter_pane = tab.panes[tab.active_pane].is_filter;
 
         // Update pane heights and scroll offsets
         for (i, pane) in tab.panes.iter_mut().enumerate() {
@@ -216,6 +224,8 @@ async fn prepare_frame(
 
     let ctx = RenderContext {
         current_line,
+        pane_selected_line,
+        pane_total_lines,
         total_lines,
         file_size,
         is_following: active_is_following,
