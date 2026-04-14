@@ -147,12 +147,12 @@ impl KeyRegistry {
         push1(&mut bindings, KeyCode::Char('?'), KeyModifiers::empty(), ActionId::ShowHelp, "Help", "Show keybindings menu", BindingContext::Always, true);
 
         // Search (visible)
-        push1(&mut bindings, KeyCode::Char('/'), KeyModifiers::empty(), ActionId::BeginSearch, "Search", "Search in current view", BindingContext::Always, true);
-        push1(&mut bindings, KeyCode::Char('n'), KeyModifiers::empty(), ActionId::NextSearchResult, "Next", "Next search result", BindingContext::Always, true);
-        push1(&mut bindings, KeyCode::Char('n'), KeyModifiers::SHIFT, ActionId::PrevSearchResult, "Prev", "Previous search result", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('/'), KeyModifiers::empty(), ActionId::BeginSearch, "Search", "Search in current view", BindingContext::MainPane, true);
+        push1(&mut bindings, KeyCode::Char('n'), KeyModifiers::empty(), ActionId::NextSearchResult, "Next", "Next search result", BindingContext::MainPane, true);
+        push1(&mut bindings, KeyCode::Char('n'), KeyModifiers::SHIFT, ActionId::PrevSearchResult, "Prev", "Previous search result", BindingContext::MainPane, true);
 
         // Follow mode (visible)
-        push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::SHIFT, ActionId::ToggleFollow, "Follow", "Toggle follow/tail mode", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char('f'), KeyModifiers::SHIFT, ActionId::ToggleFollow, "Follow", "Toggle follow/tail mode", BindingContext::MainPane, true);
 
         // Parameters prefix (visible)
         push2(&mut bindings, 'p', 'r', ActionId::ToggleRegex, "Regex", "Toggle regex on/off", BindingContext::FilterPane, true);
