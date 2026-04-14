@@ -64,7 +64,8 @@ impl StatusBar {
                 let bind_ctx = if ctx.is_filter_pane { BindingContextWrapper::FilterPane } else { BindingContextWrapper::MainPane };
                 let bind_ctx = if matches!(cmd.mode, Mode::Visual { .. }) { BindingContextWrapper::VisualMode } else { bind_ctx };
 
-                let bindings = cmd.registry.visible_bindings(bind_ctx, &cmd.pending_keys);
+                let search_active = cmd.search_query.is_some();
+                let bindings = cmd.registry.visible_bindings(bind_ctx, &cmd.pending_keys, search_active);
                 let mut displayed_keys = std::collections::HashSet::new();
                 for b in bindings {
                     if cmd.pending_keys.len() < b.sequence.len() {

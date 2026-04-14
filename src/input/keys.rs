@@ -190,7 +190,7 @@ impl KeyRegistry {
         }
     }
 
-    pub fn visible_bindings(&self, context: BindingContextWrapper, pending: &[KeyCombo]) -> Vec<&KeyBinding> {
+    pub fn visible_bindings(&self, context: BindingContextWrapper, pending: &[KeyCombo], search_active: bool) -> Vec<&KeyBinding> {
         let mut seen = std::collections::HashSet::new();
         let mut visible = Vec::new();
 
@@ -199,6 +199,11 @@ impl KeyRegistry {
 
             // When no pending sequence, only show important bindings
             if pending.is_empty() && !b.show_in_bar { continue; }
+
+            // Hide search navigation when no search is active
+            if !search_active && matches!(b.action, ActionId::NextSearchResult | ActionId::PrevSearchResult) {
+                continue;
+            }
 
             let context_match = match (b.context, context) {
                 (BindingContext::Always, BindingContextWrapper::VisualMode) => {
