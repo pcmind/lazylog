@@ -1,4 +1,4 @@
-use crate::state::action::{Mode, BindingContextWrapper};
+use crate::state::action::{Mode, BindingContextWrapper, ActionId};
 use crate::input::handler::CommandHandler;
 use crate::ui::render::RenderContext;
 use ratatui::{
@@ -102,8 +102,22 @@ impl StatusBar {
                                     _ => "Prefix"
                                 }
                             } else { b.label };
-                            hints_spans.push(Span::styled(key_str, Style::default().fg(Color::Cyan)));
-                            hints_spans.push(Span::styled(format!(":{} ", label), Style::default().fg(Color::White)));
+
+                            let is_active = match b.action {
+                                ActionId::ToggleFollow => ctx.is_following,
+                                ActionId::TogglePinFilter => ctx.is_pinned,
+                                ActionId::ToggleRegex => ctx.is_regex,
+                                ActionId::ToggleNegate => ctx.is_negated,
+                                ActionId::ToggleCaseSensitive => ctx.is_case_sensitive,
+                                ActionId::ToggleInterleave => ctx.show_bookmarks,
+                                _ => false,
+                            };
+
+                            let key_color = if is_active { Color::Green } else { Color::Cyan };
+                            let label_color = if is_active { Color::Green } else { Color::White };
+
+                            hints_spans.push(Span::styled(key_str, Style::default().fg(key_color)));
+                            hints_spans.push(Span::styled(format!(":{} ", label), Style::default().fg(label_color)));
                         }
                     }
                 }

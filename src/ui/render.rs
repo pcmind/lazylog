@@ -20,6 +20,11 @@ pub struct RenderContext {
     pub file_size: u64,
     pub is_following: bool,
     pub is_filter_pane: bool,
+    pub is_regex: bool,
+    pub is_negated: bool,
+    pub is_case_sensitive: bool,
+    pub is_pinned: bool,
+    pub show_bookmarks: bool,
 }
 
 /// Split a line's text into styled spans, highlighting all occurrences of `query`

@@ -224,12 +224,33 @@ async fn prepare_frame(
         pane_contents.insert(0, main_pane_info);
     }
 
-    let ctx = RenderContext {
-        current_line,
-        total_lines,
-        file_size,
-        is_following: active_is_following,
-        is_filter_pane,
+    let ctx = if let Some(tab) = app.active_tab() {
+        let active_pane = &tab.panes[tab.active_pane];
+        RenderContext {
+            current_line,
+            total_lines,
+            file_size,
+            is_following: active_is_following,
+            is_filter_pane,
+            is_regex: active_pane.is_regex,
+            is_negated: active_pane.is_negated,
+            is_case_sensitive: active_pane.is_case_sensitive,
+            is_pinned: active_pane.is_pinned,
+            show_bookmarks: active_pane.show_bookmarks,
+        }
+    } else {
+        RenderContext {
+            current_line: 0,
+            total_lines: 0,
+            file_size: 0,
+            is_following: false,
+            is_filter_pane: false,
+            is_regex: false,
+            is_negated: false,
+            is_case_sensitive: false,
+            is_pinned: false,
+            show_bookmarks: false,
+        }
     };
 
     (pane_contents, ctx)
