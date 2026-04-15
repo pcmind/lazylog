@@ -10,6 +10,7 @@ pub fn spawn_filter_task(
     query: String,
     is_regex: bool,
     is_negated: bool,
+    is_case_sensitive: bool,
     matched_lines: Arc<RwLock<Vec<usize>>>,
     task_generation: Arc<AtomicUsize>,
     expected_gen: usize,
@@ -24,10 +25,13 @@ pub fn spawn_filter_task(
         if query.is_empty() { return; }
 
         let query_regex = if is_regex {
-            regex::bytes::RegexBuilder::new(&query).build().ok()
+            regex::bytes::RegexBuilder::new(&query)
+                .case_insensitive(!is_case_sensitive)
+                .build()
+                .ok()
         } else {
             regex::bytes::RegexBuilder::new(&regex::escape(&query))
-                .case_insensitive(true)
+                .case_insensitive(!is_case_sensitive)
                 .build()
                 .ok()
         };

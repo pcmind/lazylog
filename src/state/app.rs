@@ -128,6 +128,7 @@ impl Tab {
         let query = pane.filter_query.clone().unwrap_or_default();
         let is_regex = pane.is_regex;
         let is_negated = pane.is_negated;
+        let is_case_sensitive = pane.is_case_sensitive;
         let matched_lines = pane.matched_lines.clone();
 
         let expected_gen = pane.task_generation.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
@@ -148,6 +149,7 @@ impl Tab {
             query,
             is_regex,
             is_negated,
+            is_case_sensitive,
             matched_lines,
             task_generation,
             expected_gen,

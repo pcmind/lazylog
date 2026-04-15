@@ -8,6 +8,7 @@ pub struct Pane {
     pub filter_query: Option<String>,
     pub is_regex: bool,
     pub is_negated: bool,
+    pub is_case_sensitive: bool,
     pub show_bookmarks: bool,
     pub scroll_offset: usize,
     pub selected_line: usize,
@@ -28,6 +29,7 @@ impl Pane {
             filter_query,
             is_regex: false,
             is_negated: false,
+            is_case_sensitive: false,
             show_bookmarks: is_filter, // Interleaved bookmarks default to true for filters
             scroll_offset: 0,
             selected_line: 0,

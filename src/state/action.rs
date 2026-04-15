@@ -12,7 +12,7 @@ pub enum ActionId {
     Quit, ScrollDown, ScrollUp,
     NextPane, PrevPane,
     NewFilter, EditFilter,
-    ToggleRegex, ToggleNegate, ToggleInterleave, ToggleBookmark, TogglePinFilter,
+    ToggleRegex, ToggleNegate, ToggleInterleave, ToggleBookmark, TogglePinFilter, ToggleCaseSensitive,
     ClosePane, CloseOtherPanes, ShowHelp,
     Yank,
     // Navigation
@@ -51,6 +51,7 @@ pub enum Action {
     ToggleInterleave,
     ToggleBookmark,
     TogglePinFilter,
+    ToggleCaseSensitive,
     ShowHelp,
     Yank(usize),
     EnterVisual,

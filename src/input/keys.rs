@@ -158,6 +158,7 @@ impl KeyRegistry {
         push2(&mut bindings, 'e', 'e', ActionId::EditFilter, "Query", "Edit the filter query", BindingContext::FilterPane, true);
         push2(&mut bindings, 'e', 'r', ActionId::ToggleRegex, "Regex", "Toggle regex on/off", BindingContext::FilterPane, true);
         push2(&mut bindings, 'e', 'n', ActionId::ToggleNegate, "Negate", "Toggle negate filter", BindingContext::FilterPane, true);
+        push2(&mut bindings, 'e', 'c', ActionId::ToggleCaseSensitive, "Case Sensitive", "Toggle case sensitive filter", BindingContext::FilterPane, true);
         push2(&mut bindings, 'e', 'b', ActionId::ToggleInterleave, "Bookmarks", "Toggle viewing bookmarked lines", BindingContext::FilterPane, true);
 
         // Visual mode bindings (visible)

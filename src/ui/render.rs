@@ -175,8 +175,9 @@ pub fn draw(
                 let r_flag = if pane.is_regex { "R" } else { "S" };
                 let n_flag = if pane.is_negated { "N" } else { "-" };
                 let b_flag = if pane.show_bookmarks { "B" } else { "-" };
+                let c_flag = if pane.is_case_sensitive { "C" } else { "-" };
                 let indicator = if is_collapsed { "▶" } else { "▼" };
-                format!(" {} [{}] Filter: {} [{}/{}/{}] ", indicator, i, pane.filter_query.as_deref().unwrap_or("*"), r_flag, n_flag, b_flag)
+                format!(" {} [{}] Filter: {} [{}/{}/{}/{}] ", indicator, i, pane.filter_query.as_deref().unwrap_or("*"), r_flag, n_flag, b_flag, c_flag)
             } else {
                 let follow_mark = if pane.is_following { " ⟳" } else { "" };
                 format!(" [{}] {}{} ", i, tab.name, follow_mark)

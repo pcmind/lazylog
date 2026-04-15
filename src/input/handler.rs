@@ -270,6 +270,7 @@ impl CommandHandler {
             ActionId::ToggleRegex => Action::ToggleRegex,
             ActionId::ToggleNegate => Action::ToggleNegate,
             ActionId::ToggleInterleave => Action::ToggleInterleave,
+            ActionId::ToggleCaseSensitive => Action::ToggleCaseSensitive,
             ActionId::ToggleBookmark => Action::ToggleBookmark,
             ActionId::ClosePane => Action::ClosePane,
             ActionId::CloseOtherPanes => Action::CloseOtherPanes,
