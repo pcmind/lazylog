@@ -23,7 +23,7 @@ impl AsyncReader {
     /// Reads up to `count` lines starting from `start_line` (0-indexed)
     pub async fn read_lines(&mut self, start_line: usize, count: usize) -> Vec<String> {
         let offsets = self.offsets.read().await;
-        
+
         let start_offset = match offsets.get(start_line) {
             Some(&offset) => offset,
             None => return vec![], // out of bounds
@@ -47,7 +47,7 @@ impl AsyncReader {
         let bytes_to_read = end_offset.saturating_sub(start_offset);
         if bytes_to_read == 0 {
             // Might be at EOF or indexing is paused
-            // For now, let's just attempt to read up to buffer limit if it's the last line, 
+            // For now, let's just attempt to read up to buffer limit if it's the last line,
             // but normally the last offset is the char after the last newline.
             return vec![];
         }
@@ -62,7 +62,11 @@ impl AsyncReader {
         }
 
         let file = self.file.as_mut().unwrap();
-        if file.seek(std::io::SeekFrom::Start(start_offset)).await.is_err() {
+        if file
+            .seek(std::io::SeekFrom::Start(start_offset))
+            .await
+            .is_err()
+        {
             return vec![];
         }
 
@@ -105,7 +109,7 @@ impl AsyncReader {
                     continue;
                 }
             };
-            
+
             let end = match offsets.get(idx + 1) {
                 Some(&e) => e,
                 None => {
@@ -127,7 +131,7 @@ impl AsyncReader {
                 results.push(String::new());
                 continue;
             }
-            
+
             let mut buf = vec![0u8; bytes as usize];
             if file.read_exact(&mut buf).await.is_ok() {
                 let content = String::from_utf8_lossy(&buf).to_string();
@@ -136,7 +140,7 @@ impl AsyncReader {
                 results.push(String::new());
             }
         }
-        
+
         results
     }
 }

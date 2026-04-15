@@ -1,19 +1,19 @@
+mod config;
+mod dispatch;
 mod events;
-mod state;
 mod input;
 mod io;
+mod state;
 mod ui;
-mod dispatch;
-mod config;
 
 use color_eyre::Result;
 use crossterm::{
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{backend::CrosstermBackend, Terminal};
+use events::{Event, Events};
+use ratatui::{Terminal, backend::CrosstermBackend};
 use std::time::Duration;
-use events::{Events, Event};
 use ui::render::RenderContext;
 
 #[tokio::main]
@@ -47,7 +47,14 @@ async fn main() -> Result<()> {
             match event {
                 Event::Key(key) => {
                     let action = cmd_handler.handle_key(key, ctx.current_line);
-                    dispatch::dispatch(action, &mut app, &mut cmd_handler, ctx.total_lines, ctx.current_line).await;
+                    dispatch::dispatch(
+                        action,
+                        &mut app,
+                        &mut cmd_handler,
+                        ctx.total_lines,
+                        ctx.current_line,
+                    )
+                    .await;
                 }
                 Event::Tick => {
                     dispatch::tick(&mut app, ctx.total_lines).await;
@@ -84,7 +91,10 @@ async fn prepare_frame(
     if let Some(tab) = app.active_tab_mut() {
         let num_panes = tab.panes.len();
         let content_height = terminal_size.height.saturating_sub(1) as usize;
-        let collapsed_count = tab.panes.iter().enumerate()
+        let collapsed_count = tab
+            .panes
+            .iter()
+            .enumerate()
             .filter(|(i, _)| tab.is_pane_collapsed(*i))
             .count();
         let expanded_count = num_panes - collapsed_count;
@@ -103,7 +113,9 @@ async fn prepare_frame(
                 let ml = pane.matched_lines.try_read();
                 if let Ok(ml_guard) = ml {
                     ml_guard.get(pane.selected_line).copied().unwrap_or(0)
-                } else { 0 }
+                } else {
+                    0
+                }
             } else {
                 pane.selected_line
             }
@@ -140,8 +152,11 @@ async fn prepare_frame(
                 let padding = 3.min(pane.height.saturating_sub(1) / 2);
                 if pane.selected_line < pane.scroll_offset + padding {
                     pane.scroll_offset = pane.selected_line.saturating_sub(padding);
-                } else if pane.selected_line >= pane.scroll_offset + pane.height.saturating_sub(padding) {
-                    pane.scroll_offset = (pane.selected_line + padding + 1).saturating_sub(pane.height);
+                } else if pane.selected_line
+                    >= pane.scroll_offset + pane.height.saturating_sub(padding)
+                {
+                    pane.scroll_offset =
+                        (pane.selected_line + padding + 1).saturating_sub(pane.height);
                 }
             }
         }
@@ -166,30 +181,58 @@ async fn prepare_frame(
                     loop {
                         match (m_it.peek(), b_it.peek()) {
                             (Some(&&m), Some(&&b)) => {
-                                if m < b { union.push(m); m_it.next(); }
-                                else if b < m { union.push(b); b_it.next(); }
-                                else { union.push(m); m_it.next(); b_it.next(); }
+                                if m < b {
+                                    union.push(m);
+                                    m_it.next();
+                                } else if b < m {
+                                    union.push(b);
+                                    b_it.next();
+                                } else {
+                                    union.push(m);
+                                    m_it.next();
+                                    b_it.next();
+                                }
                             }
-                            (Some(&&m), None) => { union.push(m); m_it.next(); }
-                            (None, Some(&&b)) => { union.push(b); b_it.next(); }
+                            (Some(&&m), None) => {
+                                union.push(m);
+                                m_it.next();
+                            }
+                            (None, Some(&&b)) => {
+                                union.push(b);
+                                b_it.next();
+                            }
                             (None, None) => break,
                         }
                     }
 
-                    visible_indices = union.into_iter().skip(pane.scroll_offset).take(pane.height).collect();
+                    visible_indices = union
+                        .into_iter()
+                        .skip(pane.scroll_offset)
+                        .take(pane.height)
+                        .collect();
                 } else {
-                    visible_indices = matched_lines.iter().skip(pane.scroll_offset).take(pane.height).copied().collect();
+                    visible_indices = matched_lines
+                        .iter()
+                        .skip(pane.scroll_offset)
+                        .take(pane.height)
+                        .copied()
+                        .collect();
                 }
 
                 let lines = tab.reader.read_specific_lines(&visible_indices).await;
-                let lines_with_info: Vec<(usize, bool, String)> = lines.into_iter().enumerate().map(|(i, l)| {
-                    let absolute_line = visible_indices[i];
-                    let is_selected = (pane.scroll_offset + i) == pane.selected_line && tab.active_pane == p_idx;
-                    if is_selected && tab.active_pane != 0 {
-                        sync_main_line = Some(absolute_line);
-                    }
-                    (absolute_line, is_selected, l)
-                }).collect();
+                let lines_with_info: Vec<(usize, bool, String)> = lines
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, l)| {
+                        let absolute_line = visible_indices[i];
+                        let is_selected = (pane.scroll_offset + i) == pane.selected_line
+                            && tab.active_pane == p_idx;
+                        if is_selected && tab.active_pane != 0 {
+                            sync_main_line = Some(absolute_line);
+                        }
+                        (absolute_line, is_selected, l)
+                    })
+                    .collect();
                 pane_contents.push(lines_with_info);
             } else {
                 pane_contents.push(Vec::new());
@@ -203,8 +246,11 @@ async fn prepare_frame(
                 let padding = 3.min(height.saturating_sub(1) / 2);
                 if tab.panes[0].selected_line < tab.panes[0].scroll_offset + padding {
                     tab.panes[0].scroll_offset = tab.panes[0].selected_line.saturating_sub(padding);
-                } else if tab.panes[0].selected_line >= tab.panes[0].scroll_offset + height.saturating_sub(padding) {
-                    tab.panes[0].scroll_offset = (tab.panes[0].selected_line + padding + 1).saturating_sub(height);
+                } else if tab.panes[0].selected_line
+                    >= tab.panes[0].scroll_offset + height.saturating_sub(padding)
+                {
+                    tab.panes[0].scroll_offset =
+                        (tab.panes[0].selected_line + padding + 1).saturating_sub(height);
                 }
             }
         }
@@ -214,11 +260,15 @@ async fn prepare_frame(
         if !tab.panes.is_empty() {
             let p0 = &tab.panes[0];
             let lines = tab.reader.read_lines(p0.scroll_offset, p0.height).await;
-            main_pane_info = lines.into_iter().enumerate().map(|(i, l)| {
-                let absolute_line = p0.scroll_offset + i;
-                let is_selected = absolute_line == p0.selected_line;
-                (absolute_line, is_selected, l)
-            }).collect();
+            main_pane_info = lines
+                .into_iter()
+                .enumerate()
+                .map(|(i, l)| {
+                    let absolute_line = p0.scroll_offset + i;
+                    let is_selected = absolute_line == p0.selected_line;
+                    (absolute_line, is_selected, l)
+                })
+                .collect();
         }
         pane_contents.insert(0, main_pane_info);
     }

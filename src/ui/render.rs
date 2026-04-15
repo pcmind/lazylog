@@ -1,17 +1,17 @@
 use ratatui::{
-    layout::{Layout, Direction, Constraint, Alignment},
+    Frame,
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Clear, Wrap, block::Title},
-    Frame,
+    widgets::{Block, Borders, Clear, Paragraph, Wrap, block::Title},
 };
 
+use crate::input::handler::CommandHandler;
 use crate::state::action::Mode;
 use crate::state::app::App;
-use crate::input::handler::CommandHandler;
+use crate::ui::help::render_help_popup;
 use crate::ui::layout::LayoutTree;
 use crate::ui::status_bar::{StatusBar, compact_num, compact_size};
-use crate::ui::help::render_help_popup;
 
 /// Bundles render-time state that doesn't belong to App or CommandHandler.
 pub struct RenderContext {
@@ -48,7 +48,10 @@ pub fn build_search_spans(
         if start > last_end {
             spans.push(Span::styled(text[last_end..start].to_string(), base_style));
         }
-        spans.push(Span::styled(text[start..start + query.len()].to_string(), highlight_style));
+        spans.push(Span::styled(
+            text[start..start + query.len()].to_string(),
+            highlight_style,
+        ));
         last_end = start + query.len();
     }
 
@@ -73,27 +76,41 @@ pub fn draw(
 ) {
     let (main_area, status_area) = LayoutTree::split_main(f.size());
 
-    let search_highlight_style = Style::default().bg(Color::Yellow).fg(Color::Black).add_modifier(Modifier::BOLD);
+    let search_highlight_style = Style::default()
+        .bg(Color::Yellow)
+        .fg(Color::Black)
+        .add_modifier(Modifier::BOLD);
 
     // 1. Draw Main Content (Panes)
     if let Some(tab) = app.active_tab() {
-        let expanded_panes = tab.panes.iter().enumerate()
+        let expanded_panes = tab
+            .panes
+            .iter()
+            .enumerate()
             .filter(|(i, _)| !tab.is_pane_collapsed(*i))
             .count() as u32;
-        let constraints: Vec<Constraint> = tab.panes.iter().enumerate().map(|(i, _pane)| {
-            if tab.is_pane_collapsed(i) {
-                Constraint::Length(1)
-            } else if expanded_panes == 1 {
-                Constraint::Percentage(100)
-            } else if i == 0 {
-                // Main pane gets 2/3 when a filter is active
-                Constraint::Ratio(2, 3)
-            } else {
-                // Active filter pane gets 1/3
-                Constraint::Ratio(1, 3)
-            }
-        }).collect();
-        let pane_rects = Layout::default().direction(Direction::Vertical).constraints(constraints).split(main_area);
+        let constraints: Vec<Constraint> = tab
+            .panes
+            .iter()
+            .enumerate()
+            .map(|(i, _pane)| {
+                if tab.is_pane_collapsed(i) {
+                    Constraint::Length(1)
+                } else if expanded_panes == 1 {
+                    Constraint::Percentage(100)
+                } else if i == 0 {
+                    // Main pane gets 2/3 when a filter is active
+                    Constraint::Ratio(2, 3)
+                } else {
+                    // Active filter pane gets 1/3
+                    Constraint::Ratio(1, 3)
+                }
+            })
+            .collect();
+        let pane_rects = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(constraints)
+            .split(main_area);
 
         for (i, pane) in tab.panes.iter().enumerate() {
             let h_offset = pane.horizontal_offset;
@@ -111,11 +128,17 @@ pub fn draw(
                             re.is_match(line_text)
                         } else if let Some(ref sub) = h.substring {
                             line_text.contains(sub)
-                        } else { false };
+                        } else {
+                            false
+                        };
 
                         if matches {
-                            if let Some(bg) = h.bg { content_style = content_style.bg(bg); }
-                            if let Some(fg) = h.fg { content_style = content_style.fg(fg); }
+                            if let Some(bg) = h.bg {
+                                content_style = content_style.bg(bg);
+                            }
+                            if let Some(fg) = h.fg {
+                                content_style = content_style.fg(fg);
+                            }
                             break;
                         }
                     }
@@ -143,7 +166,10 @@ pub fn draw(
                         }
                     }
 
-                    let span_prefix = Span::styled(prefix, style.fg(if is_marked { Color::Red } else { Color::Yellow }));
+                    let span_prefix = Span::styled(
+                        prefix,
+                        style.fg(if is_marked { Color::Red } else { Color::Yellow }),
+                    );
 
                     // Apply horizontal offset
                     let display_text = if h_offset < line_text.len() {
@@ -174,7 +200,16 @@ pub fn draw(
                 let b_flag = if pane.show_bookmarks { "B" } else { "-" };
                 let c_flag = if pane.is_case_sensitive { "C" } else { "-" };
                 let indicator = if is_collapsed { "▶" } else { "▼" };
-                format!(" {} [{}] Filter: {} [{}/{}/{}/{}] ", indicator, i, pane.filter_query.as_deref().unwrap_or("*"), r_flag, n_flag, b_flag, c_flag)
+                format!(
+                    " {} [{}] Filter: {} [{}/{}/{}/{}] ",
+                    indicator,
+                    i,
+                    pane.filter_query.as_deref().unwrap_or("*"),
+                    r_flag,
+                    n_flag,
+                    b_flag,
+                    c_flag
+                )
             } else {
                 let follow_mark = if pane.is_following { " ⟳" } else { "" };
                 format!(" [{}] {}{} ", i, tab.name, follow_mark)
@@ -189,22 +224,33 @@ pub fn draw(
                 Block::default()
                     .borders(Borders::ALL)
                     .title(title)
-                    .border_style(if i == tab.active_pane { Style::default().fg(Color::Yellow) } else { Style::default() })
+                    .border_style(if i == tab.active_pane {
+                        Style::default().fg(Color::Yellow)
+                    } else {
+                        Style::default()
+                    })
             };
 
             if pane.is_filter {
                 let count = pane.matched_lines.try_read().map(|m| m.len()).unwrap_or(0);
-                block = block.title(Title::from(format!(" {} results ", compact_num(count))).alignment(Alignment::Right));
+                block = block.title(
+                    Title::from(format!(" {} results ", compact_num(count)))
+                        .alignment(Alignment::Right),
+                );
             } else if i == 0 {
                 let size_str = compact_size(ctx.file_size);
-                block = block.title(Title::from(format!(" {} ", size_str)).alignment(Alignment::Right));
+                block =
+                    block.title(Title::from(format!(" {} ", size_str)).alignment(Alignment::Right));
             }
 
             f.render_widget(Paragraph::new(text_lines).block(block), pane_rects[i]);
         }
     } else {
         let main_block = Block::default().title("Lazylog").borders(Borders::ALL);
-        f.render_widget(Paragraph::new("No file loaded.\n\nUsage: lazylog <file>").block(main_block), main_area);
+        f.render_widget(
+            Paragraph::new("No file loaded.\n\nUsage: lazylog <file>").block(main_block),
+            main_area,
+        );
     }
 
     // 3. Draw Status bar
@@ -212,7 +258,12 @@ pub fn draw(
 
     // 4. Overlays (Help / Line Detail)
     if cmd_handler.mode == Mode::Help {
-        render_help_popup(f, &cmd_handler.registry, cmd_handler.help_selected, &cmd_handler.help_filter);
+        render_help_popup(
+            f,
+            &cmd_handler.registry,
+            cmd_handler.help_selected,
+            &cmd_handler.help_filter,
+        );
     } else if cmd_handler.mode == Mode::LineDetail {
         if let Some(text) = &cmd_handler.detail_text {
             render_line_detail_popup(f, text);

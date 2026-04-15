@@ -1,7 +1,7 @@
-use crate::state::action::{Action, FilterIntent, Mode};
-use crate::state::app::{App, Tab};
 use crate::input::handler::CommandHandler;
 use crate::io::process::apply_transformers;
+use crate::state::action::{Action, FilterIntent, Mode};
+use crate::state::app::{App, Tab};
 
 /// Dispatch an Action to mutate app state.
 pub async fn dispatch(
@@ -87,7 +87,6 @@ pub async fn dispatch(
             if let Some(tab) = app.active_tab_mut() {
                 let active_idx = tab.active_pane;
                 match intent {
-
                     FilterIntent::Edit => {
                         if tab.panes[active_idx].is_filter {
                             tab.panes[active_idx].filter_query = Some(query);
@@ -149,7 +148,8 @@ pub async fn dispatch(
                 let ap = tab.active_pane;
                 if tab.panes[ap].is_filter {
                     cmd_handler.mode = Mode::Filter;
-                    cmd_handler.filter_input = tab.panes[ap].filter_query.clone().unwrap_or_default();
+                    cmd_handler.filter_input =
+                        tab.panes[ap].filter_query.clone().unwrap_or_default();
                 }
             }
         }
@@ -212,7 +212,8 @@ pub async fn dispatch(
             if let Some(tab) = app.active_tab_mut() {
                 let ap = tab.active_pane;
                 let max = get_max_lines(tab, ap, total_lines).await;
-                jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, true).await;
+                jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, true)
+                    .await;
             }
         }
         Action::NextSearchResult => {
@@ -220,7 +221,15 @@ pub async fn dispatch(
                 if let Some(tab) = app.active_tab_mut() {
                     let ap = tab.active_pane;
                     let max = get_max_lines(tab, ap, total_lines).await;
-                    jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, true).await;
+                    jump_to_search_match(
+                        tab,
+                        ap,
+                        max,
+                        &cmd_handler.search_query,
+                        current_line,
+                        true,
+                    )
+                    .await;
                 }
             }
         }
@@ -229,7 +238,15 @@ pub async fn dispatch(
                 if let Some(tab) = app.active_tab_mut() {
                     let ap = tab.active_pane;
                     let max = get_max_lines(tab, ap, total_lines).await;
-                    jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, false).await;
+                    jump_to_search_match(
+                        tab,
+                        ap,
+                        max,
+                        &cmd_handler.search_query,
+                        current_line,
+                        false,
+                    )
+                    .await;
                 }
             }
         }
@@ -250,7 +267,10 @@ pub async fn dispatch(
                 let ap = tab.active_pane;
                 let target_line = if tab.panes[ap].is_filter {
                     let matched = tab.panes[ap].matched_lines.read().await;
-                    matched.get(tab.panes[ap].selected_line).copied().unwrap_or(0)
+                    matched
+                        .get(tab.panes[ap].selected_line)
+                        .copied()
+                        .unwrap_or(0)
                 } else {
                     tab.panes[ap].selected_line
                 };
@@ -319,7 +339,9 @@ async fn jump_to_search_match(
 
     if pane.is_filter {
         let matched = pane.matched_lines.read().await;
-        if matched.is_empty() { return; }
+        if matched.is_empty() {
+            return;
+        }
 
         let current_idx = pane.selected_line;
         let len = matched.len();
@@ -356,10 +378,20 @@ async fn jump_to_search_match(
             let start = current_line + 1;
             (0..scan_count).map(|i| (start + i) % max_lines).collect()
         } else {
-            let start = if current_line == 0 { max_lines.saturating_sub(1) } else { current_line - 1 };
-            (0..scan_count).map(|i| {
-                if i <= start { start - i } else { max_lines - 1 - (i - start - 1) }
-            }).collect()
+            let start = if current_line == 0 {
+                max_lines.saturating_sub(1)
+            } else {
+                current_line - 1
+            };
+            (0..scan_count)
+                .map(|i| {
+                    if i <= start {
+                        start - i
+                    } else {
+                        max_lines - 1 - (i - start - 1)
+                    }
+                })
+                .collect()
         };
 
         let batch_size = 100;

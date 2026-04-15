@@ -10,18 +10,37 @@ pub enum Mode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ActionId {
-    Quit, ScrollDown, ScrollUp,
-    NextPane, PrevPane,
-    NewFilter, EditFilter,
-    ToggleRegex, ToggleNegate, ToggleInterleave, ToggleBookmark, TogglePinFilter, ToggleCaseSensitive,
-    ClosePane, CloseOtherPanes, ShowHelp,
+    Quit,
+    ScrollDown,
+    ScrollUp,
+    NextPane,
+    PrevPane,
+    NewFilter,
+    EditFilter,
+    ToggleRegex,
+    ToggleNegate,
+    ToggleInterleave,
+    ToggleBookmark,
+    TogglePinFilter,
+    ToggleCaseSensitive,
+    ClosePane,
+    CloseOtherPanes,
+    ShowHelp,
     Yank,
     // Navigation
-    GotoTop, GotoBottom, HalfPageDown, HalfPageUp, PageDown, PageUp,
+    GotoTop,
+    GotoBottom,
+    HalfPageDown,
+    HalfPageUp,
+    PageDown,
+    PageUp,
     // Horizontal
-    ScrollLeft, ScrollRight,
+    ScrollLeft,
+    ScrollRight,
     // Search
-    BeginSearch, NextSearchResult, PrevSearchResult,
+    BeginSearch,
+    NextSearchResult,
+    PrevSearchResult,
     // Follow
     ToggleFollow,
     // Line detail
@@ -30,7 +49,12 @@ pub enum ActionId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(dead_code)]
-pub enum BindingContext { Always, FilterPane, MainPane, VisualMode }
+pub enum BindingContext {
+    Always,
+    FilterPane,
+    MainPane,
+    VisualMode,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FilterIntent {

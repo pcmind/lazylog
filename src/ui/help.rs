@@ -1,13 +1,18 @@
+use crate::input::keys::KeyRegistry;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Alignment},
+    Frame,
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
-    Frame,
 };
-use crate::input::keys::KeyRegistry;
 
-pub fn render_help_popup(f: &mut Frame, registry: &KeyRegistry, selected_index: usize, filter: &str) {
+pub fn render_help_popup(
+    f: &mut Frame,
+    registry: &KeyRegistry,
+    selected_index: usize,
+    filter: &str,
+) {
     let size = f.size();
 
     // Create a 80x80% area centered
@@ -36,7 +41,7 @@ pub fn render_help_popup(f: &mut Frame, registry: &KeyRegistry, selected_index: 
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // Filter input area
-            Constraint::Min(1),   // Bindings list
+            Constraint::Min(1),    // Bindings list
         ])
         .split(popup_area);
 
@@ -63,32 +68,48 @@ pub fn render_help_popup(f: &mut Frame, registry: &KeyRegistry, selected_index: 
 
     // Filter bindings
     let filter_lower = filter.to_lowercase();
-    let filtered_bindings: Vec<_> = registry.all_bindings().iter().enumerate()
+    let filtered_bindings: Vec<_> = registry
+        .all_bindings()
+        .iter()
+        .enumerate()
         .filter(|(_, b)| {
-            if filter.is_empty() { return true; }
+            if filter.is_empty() {
+                return true;
+            }
             b.description.to_lowercase().contains(&filter_lower)
-            || b.label.to_lowercase().contains(&filter_lower)
-            || b.display_key().to_lowercase().contains(&filter_lower)
+                || b.label.to_lowercase().contains(&filter_lower)
+                || b.display_key().to_lowercase().contains(&filter_lower)
         })
         .collect();
 
-    let items: Vec<ListItem> = filtered_bindings.iter().enumerate().map(|(filtered_idx, (_, b))| {
-        let key_str = b.display_key();
-        let desc = b.description;
+    let items: Vec<ListItem> = filtered_bindings
+        .iter()
+        .enumerate()
+        .map(|(filtered_idx, (_, b))| {
+            let key_str = b.display_key();
+            let desc = b.description;
 
-        let mut style = Style::default().fg(Color::White);
-        if filtered_idx == selected_index {
-            style = style.bg(Color::Rgb(60, 60, 60)).add_modifier(Modifier::BOLD);
-        }
+            let mut style = Style::default().fg(Color::White);
+            if filtered_idx == selected_index {
+                style = style
+                    .bg(Color::Rgb(60, 60, 60))
+                    .add_modifier(Modifier::BOLD);
+            }
 
-        let content = Line::from(vec![
-            Span::styled(format!("{:>10} ", key_str), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-            Span::raw("│ "),
-            Span::styled(format!("{:<30}", desc), style),
-        ]);
+            let content = Line::from(vec![
+                Span::styled(
+                    format!("{:>10} ", key_str),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw("│ "),
+                Span::styled(format!("{:<30}", desc), style),
+            ]);
 
-        ListItem::new(content).style(style)
-    }).collect();
+            ListItem::new(content).style(style)
+        })
+        .collect();
 
     let mut list_state = ListState::default();
     list_state.select(Some(selected_index));
@@ -99,7 +120,11 @@ pub fn render_help_popup(f: &mut Frame, registry: &KeyRegistry, selected_index: 
 
     let list = List::new(items)
         .block(list_block)
-        .highlight_style(Style::default().bg(Color::Rgb(60, 60, 60)).add_modifier(Modifier::BOLD))
+        .highlight_style(
+            Style::default()
+                .bg(Color::Rgb(60, 60, 60))
+                .add_modifier(Modifier::BOLD),
+        )
         .highlight_symbol(">> ");
 
     f.render_stateful_widget(list, inner_layout[1], &mut list_state);

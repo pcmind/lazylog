@@ -1,7 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::state::action::{Action, ActionId, FilterIntent, Mode};
 use crate::input::keys::{KeyCombo, KeyRegistry, LookupResult};
+use crate::state::action::{Action, ActionId, FilterIntent, Mode};
 
 /// Central input state machine: translates key events into Actions based on current Mode.
 pub struct CommandHandler {
@@ -35,12 +35,10 @@ impl CommandHandler {
         }
     }
 
-
     pub fn handle_key(&mut self, key: KeyEvent, current_line: usize) -> Action {
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             return Action::Quit;
         }
-
 
         match self.mode {
             Mode::Normal => self.handle_normal(key, current_line),
@@ -61,7 +59,9 @@ impl CommandHandler {
 
         if self.pending_keys.is_empty() {
             if let KeyCode::Char('v') = key.code {
-                self.mode = Mode::Visual { anchor_line: current_line };
+                self.mode = Mode::Visual {
+                    anchor_line: current_line,
+                };
                 return Action::EnterVisual;
             }
             if let KeyCode::Char(c) = key.code {
@@ -78,9 +78,7 @@ impl CommandHandler {
                 self.pending_keys.clear();
                 self.execute_action(action_id, current_line)
             }
-            LookupResult::PartialMatch => {
-                Action::None
-            }
+            LookupResult::PartialMatch => Action::None,
             LookupResult::NoMatch => {
                 self.pending_keys.clear();
                 Action::None
@@ -180,11 +178,15 @@ impl CommandHandler {
             return self.registry.all_bindings().len();
         }
         let filter_lower = self.help_filter.to_lowercase();
-        self.registry.all_bindings().iter().filter(|b| {
-            b.description.to_lowercase().contains(&filter_lower)
-            || b.label.to_lowercase().contains(&filter_lower)
-            || b.display_key().to_lowercase().contains(&filter_lower)
-        }).count()
+        self.registry
+            .all_bindings()
+            .iter()
+            .filter(|b| {
+                b.description.to_lowercase().contains(&filter_lower)
+                    || b.label.to_lowercase().contains(&filter_lower)
+                    || b.display_key().to_lowercase().contains(&filter_lower)
+            })
+            .count()
     }
 
     fn handle_help(&mut self, key: KeyEvent) -> Action {
@@ -216,11 +218,15 @@ impl CommandHandler {
                 let binding = if self.help_filter.is_empty() {
                     self.registry.all_bindings().get(self.help_selected)
                 } else {
-                    self.registry.all_bindings().iter().filter(|b| {
-                        b.description.to_lowercase().contains(&filter_lower)
-                        || b.label.to_lowercase().contains(&filter_lower)
-                        || b.display_key().to_lowercase().contains(&filter_lower)
-                    }).nth(self.help_selected)
+                    self.registry
+                        .all_bindings()
+                        .iter()
+                        .filter(|b| {
+                            b.description.to_lowercase().contains(&filter_lower)
+                                || b.label.to_lowercase().contains(&filter_lower)
+                                || b.display_key().to_lowercase().contains(&filter_lower)
+                        })
+                        .nth(self.help_selected)
                 };
                 if let Some(b) = binding {
                     let action_id = b.action;
@@ -240,7 +246,7 @@ impl CommandHandler {
             _ => Action::None,
         }
     }
- 
+
     fn handle_line_detail(&mut self, key: KeyEvent) -> Action {
         match key.code {
             KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => {
@@ -250,7 +256,7 @@ impl CommandHandler {
             _ => Action::None,
         }
     }
- 
+
     fn execute_action(&mut self, action_id: ActionId, _current_line: usize) -> Action {
         match action_id {
             ActionId::Quit => Action::Quit,

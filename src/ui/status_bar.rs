@@ -1,5 +1,5 @@
-use crate::state::action::{Mode, BindingContextWrapper, ActionId};
 use crate::input::handler::CommandHandler;
+use crate::state::action::{ActionId, BindingContextWrapper, Mode};
 use crate::ui::render::RenderContext;
 use ratatui::{
     style::{Color, Modifier, Style},
@@ -35,11 +35,24 @@ impl StatusBar {
     pub fn render(cmd: &CommandHandler, ctx: &RenderContext) -> Paragraph<'static> {
         let mut prefix_str = String::new();
         if !cmd.pending_keys.is_empty() {
-            prefix_str = format!(" WAIT [{}] ", cmd.pending_keys.iter().map(|k| k.display_key()).collect::<Vec<_>>().join(" "));
+            prefix_str = format!(
+                " WAIT [{}] ",
+                cmd.pending_keys
+                    .iter()
+                    .map(|k| k.display_key())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            );
         }
 
         let mode_str = match cmd.mode {
-            Mode::Normal => if ctx.is_filter_pane { " NORMAL (FILTER) " } else { " NORMAL " },
+            Mode::Normal => {
+                if ctx.is_filter_pane {
+                    " NORMAL (FILTER) "
+                } else {
+                    " NORMAL "
+                }
+            }
             Mode::Filter => " INPUT ",
             Mode::Search => " SEARCH ",
             Mode::Help => " HELP ",
@@ -47,18 +60,22 @@ impl StatusBar {
             Mode::LineDetail => " DETAIL ",
         };
 
-        let mut spans = vec![
-            Span::styled(
-                mode_str,
-                Style::default().bg(Color::Blue).fg(Color::Black).add_modifier(Modifier::BOLD),
-            )
-        ];
+        let mut spans = vec![Span::styled(
+            mode_str,
+            Style::default()
+                .bg(Color::Blue)
+                .fg(Color::Black)
+                .add_modifier(Modifier::BOLD),
+        )];
 
         // Follow mode badge
         if ctx.is_following {
             spans.push(Span::styled(
                 " FOLLOW ",
-                Style::default().bg(Color::Green).fg(Color::Black).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .bg(Color::Green)
+                    .fg(Color::Black)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
 
@@ -67,7 +84,10 @@ impl StatusBar {
             if let Some(q) = &cmd.search_query {
                 spans.push(Span::styled(
                     format!(" /{} ", q),
-                    Style::default().bg(Color::Yellow).fg(Color::Black).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .bg(Color::Yellow)
+                        .fg(Color::Black)
+                        .add_modifier(Modifier::BOLD),
                 ));
             }
         }
@@ -75,7 +95,10 @@ impl StatusBar {
         if !prefix_str.is_empty() {
             spans.push(Span::styled(
                 prefix_str,
-                Style::default().bg(Color::LightRed).fg(Color::Black).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .bg(Color::LightRed)
+                    .fg(Color::Black)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
 
@@ -84,11 +107,21 @@ impl StatusBar {
 
         match cmd.mode {
             Mode::Normal | Mode::Visual { .. } => {
-                let bind_ctx = if ctx.is_filter_pane { BindingContextWrapper::FilterPane } else { BindingContextWrapper::MainPane };
-                let bind_ctx = if matches!(cmd.mode, Mode::Visual { .. }) { BindingContextWrapper::VisualMode } else { bind_ctx };
+                let bind_ctx = if ctx.is_filter_pane {
+                    BindingContextWrapper::FilterPane
+                } else {
+                    BindingContextWrapper::MainPane
+                };
+                let bind_ctx = if matches!(cmd.mode, Mode::Visual { .. }) {
+                    BindingContextWrapper::VisualMode
+                } else {
+                    bind_ctx
+                };
 
                 let search_active = cmd.search_query.is_some();
-                let bindings = cmd.registry.visible_bindings(bind_ctx, &cmd.pending_keys, search_active);
+                let bindings =
+                    cmd.registry
+                        .visible_bindings(bind_ctx, &cmd.pending_keys, search_active);
                 let mut displayed_keys = std::collections::HashSet::new();
                 for b in bindings {
                     if cmd.pending_keys.len() < b.sequence.len() {
@@ -100,9 +133,11 @@ impl StatusBar {
                                 match key_str.as_str() {
                                     "e" => "Edit Filter",
                                     "g" => "Goto",
-                                    _ => "Prefix"
+                                    _ => "Prefix",
                                 }
-                            } else { b.label };
+                            } else {
+                                b.label
+                            };
 
                             let is_active = match b.action {
                                 ActionId::ToggleFollow => ctx.is_following,
@@ -115,33 +150,49 @@ impl StatusBar {
                             };
 
                             let key_color = if is_active { Color::Green } else { Color::Cyan };
-                            let label_color = if is_active { Color::Green } else { Color::White };
+                            let label_color = if is_active {
+                                Color::Green
+                            } else {
+                                Color::White
+                            };
 
                             hints_spans.push(Span::styled(key_str, Style::default().fg(key_color)));
-                            hints_spans.push(Span::styled(format!(":{} ", label), Style::default().fg(label_color)));
+                            hints_spans.push(Span::styled(
+                                format!(":{} ", label),
+                                Style::default().fg(label_color),
+                            ));
                         }
                     }
                 }
-            },
+            }
             Mode::Filter => {
                 hints_spans.push(Span::styled("[Esc] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Cancel  ", Style::default().fg(Color::White)));
                 hints_spans.push(Span::styled("[Enter] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Confirm  ", Style::default().fg(Color::White)));
-                hints_spans.push(Span::styled(format!("> {}", cmd.filter_input), Style::default().fg(Color::Yellow)));
-            },
+                hints_spans.push(Span::styled(
+                    format!("> {}", cmd.filter_input),
+                    Style::default().fg(Color::Yellow),
+                ));
+            }
             Mode::Search => {
                 hints_spans.push(Span::styled("[Esc] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Cancel  ", Style::default().fg(Color::White)));
                 hints_spans.push(Span::styled("[Enter] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Confirm  ", Style::default().fg(Color::White)));
-                hints_spans.push(Span::styled(format!("/ {}", cmd.search_input), Style::default().fg(Color::Yellow)));
-            },
+                hints_spans.push(Span::styled(
+                    format!("/ {}", cmd.search_input),
+                    Style::default().fg(Color::Yellow),
+                ));
+            }
             Mode::Help => {
                 hints_spans.push(Span::styled("[Esc] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Close  ", Style::default().fg(Color::White)));
                 hints_spans.push(Span::styled("[↑/↓] ", Style::default().fg(Color::Cyan)));
-                hints_spans.push(Span::styled("Navigate  ", Style::default().fg(Color::White)));
+                hints_spans.push(Span::styled(
+                    "Navigate  ",
+                    Style::default().fg(Color::White),
+                ));
                 hints_spans.push(Span::styled("[Enter] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Execute  ", Style::default().fg(Color::White)));
             }
@@ -151,14 +202,9 @@ impl StatusBar {
             }
         }
 
-
-
         spans.extend(hints_spans);
 
-        let empty_space = Span::styled(
-            " ".repeat(200),
-            Style::default().bg(Color::DarkGray),
-        );
+        let empty_space = Span::styled(" ".repeat(200), Style::default().bg(Color::DarkGray));
         spans.push(empty_space);
 
         Paragraph::new(Line::from(spans))

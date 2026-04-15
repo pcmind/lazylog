@@ -38,7 +38,7 @@ impl Indexer {
             loop {
                 match reader.read(&mut buffer).await {
                     Ok(0) => {
-                        // EOF reached: flush batch and sleep rather than breaking, 
+                        // EOF reached: flush batch and sleep rather than breaking,
                         // so we can continually pick up new appended lines (tail -f)
                         if !batch.is_empty() {
                             let mut lock = offsets.write().await;
@@ -67,7 +67,6 @@ impl Indexer {
                     }
                 }
             }
-
         });
     }
 }

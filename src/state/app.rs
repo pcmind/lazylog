@@ -1,7 +1,7 @@
-use crate::io::{indexer::Indexer, reader::AsyncReader};
-use crate::io::filter::spawn_filter_task;
-use crate::state::pane::Pane;
 use crate::config::Config;
+use crate::io::filter::spawn_filter_task;
+use crate::io::{indexer::Indexer, reader::AsyncReader};
+use crate::state::pane::Pane;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -17,7 +17,11 @@ pub struct Tab {
 
 impl Tab {
     pub fn new(filepath: PathBuf) -> Self {
-        let name = filepath.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let name = filepath
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
         let indexer = Indexer::new(filepath.clone());
         let reader = AsyncReader::new(filepath.clone(), indexer.offsets.clone());
 
@@ -36,9 +40,15 @@ impl Tab {
 
     pub fn is_pane_collapsed(&self, idx: usize) -> bool {
         let pane = &self.panes[idx];
-        if !pane.is_filter { return false; }
-        if idx == self.active_pane { return false; }
-        if pane.is_pinned { return false; }
+        if !pane.is_filter {
+            return false;
+        }
+        if idx == self.active_pane {
+            return false;
+        }
+        if pane.is_pinned {
+            return false;
+        }
         true
     }
 
@@ -53,7 +63,9 @@ impl Tab {
     }
 
     pub fn remove_pane(&mut self, idx: usize) {
-        if idx == 0 || idx >= self.panes.len() { return; }
+        if idx == 0 || idx >= self.panes.len() {
+            return;
+        }
 
         let mut to_remove = vec![idx];
         let mut i = idx + 1;
@@ -68,7 +80,9 @@ impl Tab {
 
         to_remove.sort_unstable_by(|a, b| b.cmp(a));
         for r_idx in &to_remove {
-            self.panes[*r_idx].task_generation.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.panes[*r_idx]
+                .task_generation
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             self.panes.remove(*r_idx);
         }
 
@@ -87,14 +101,18 @@ impl Tab {
     pub fn retain_pane(&mut self, target_idx: usize) {
         if target_idx == 0 || target_idx >= self.panes.len() {
             let len = self.panes.len();
-            for i in (1..len).rev() { self.remove_pane(i); }
+            for i in (1..len).rev() {
+                self.remove_pane(i);
+            }
             return;
         }
 
         let mut keepers = vec![0, target_idx];
         let mut curr = target_idx;
         while let Some(parent) = self.panes[curr].parent_pane {
-            if !keepers.contains(&parent) { keepers.push(parent); }
+            if !keepers.contains(&parent) {
+                keepers.push(parent);
+            }
             curr = parent;
         }
 
@@ -106,7 +124,9 @@ impl Tab {
         }
         to_remove.sort_unstable_by(|a, b| b.cmp(a));
         for r_idx in &to_remove {
-            self.panes[*r_idx].task_generation.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.panes[*r_idx]
+                .task_generation
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             self.panes.remove(*r_idx);
         }
 
@@ -123,7 +143,9 @@ impl Tab {
 
     pub fn update_filter_pane(&mut self, pane_idx: usize) {
         let pane = &mut self.panes[pane_idx];
-        if !pane.is_filter { return; }
+        if !pane.is_filter {
+            return;
+        }
 
         let query = pane.filter_query.clone().unwrap_or_default();
         let is_regex = pane.is_regex;
@@ -131,7 +153,10 @@ impl Tab {
         let is_case_sensitive = pane.is_case_sensitive;
         let matched_lines = pane.matched_lines.clone();
 
-        let expected_gen = pane.task_generation.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        let expected_gen = pane
+            .task_generation
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            + 1;
         let task_generation = pane.task_generation.clone();
 
         let parent_matched = if let Some(pidx) = pane.parent_pane {

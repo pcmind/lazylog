@@ -1,9 +1,9 @@
 use ratatui::style::Color;
 use regex::Regex;
 use serde::Deserialize;
+use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::fs;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HighlighterConfig {
@@ -128,7 +128,7 @@ fg = "Yellow"
             });
         }
 
-        Config { 
+        Config {
             highlighters,
             transformers,
         }

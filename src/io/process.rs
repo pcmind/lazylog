@@ -1,7 +1,7 @@
-use tokio::process::Command;
+use crate::config::Config;
 use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
-use crate::config::Config;
+use tokio::process::Command;
 
 /// Applies external transformers to a log line if it matches any configured patterns.
 pub async fn apply_transformers(line: String, config: &Config) -> String {
@@ -38,7 +38,7 @@ async fn run_command(cmd_str: &str, input: &str) -> tokio::io::Result<String> {
     })?;
 
     let input_bytes = input.as_bytes().to_vec();
-    
+
     // Write input in a separate task to avoid deadlock if pipe is full
     tokio::spawn(async move {
         let _ = stdin.write_all(&input_bytes).await;

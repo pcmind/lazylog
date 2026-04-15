@@ -1,6 +1,6 @@
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use std::sync::atomic::AtomicUsize;
+use tokio::sync::RwLock;
 
 /// Individual pane state: cursor position, filter settings, matched lines.
 pub struct Pane {

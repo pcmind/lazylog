@@ -1,6 +1,6 @@
+use crossterm::event::EventStream;
 use crossterm::event::{Event as CrosstermEvent, KeyEvent, MouseEvent};
 use futures::StreamExt;
-use crossterm::event::EventStream;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time;
@@ -21,12 +21,12 @@ pub struct Events {
 impl Events {
     pub fn new(tick_rate: Duration) -> Self {
         let (tx, rx) = mpsc::unbounded_channel();
-        
+
         let tx_clone = tx.clone();
         tokio::spawn(async move {
             let mut reader = EventStream::new();
             let mut tick = time::interval(tick_rate);
-            
+
             loop {
                 let tx = tx_clone.clone();
                 tokio::select! {
