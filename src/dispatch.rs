@@ -154,11 +154,10 @@ pub async fn dispatch(
             }
         }
         Action::FocusPane(idx) => {
-            if let Some(tab) = app.active_tab_mut() {
-                if idx < tab.panes.len() {
+            if let Some(tab) = app.active_tab_mut()
+                && idx < tab.panes.len() {
                     tab.active_pane = idx;
                 }
-            }
         }
         Action::ClosePane => {
             if let Some(tab) = app.active_tab_mut() {
@@ -217,8 +216,8 @@ pub async fn dispatch(
             }
         }
         Action::NextSearchResult => {
-            if cmd_handler.search_query.is_some() {
-                if let Some(tab) = app.active_tab_mut() {
+            if cmd_handler.search_query.is_some()
+                && let Some(tab) = app.active_tab_mut() {
                     let ap = tab.active_pane;
                     let max = get_max_lines(tab, ap, total_lines).await;
                     jump_to_search_match(
@@ -231,11 +230,10 @@ pub async fn dispatch(
                     )
                     .await;
                 }
-            }
         }
         Action::PrevSearchResult => {
-            if cmd_handler.search_query.is_some() {
-                if let Some(tab) = app.active_tab_mut() {
+            if cmd_handler.search_query.is_some()
+                && let Some(tab) = app.active_tab_mut() {
                     let ap = tab.active_pane;
                     let max = get_max_lines(tab, ap, total_lines).await;
                     jump_to_search_match(
@@ -248,7 +246,6 @@ pub async fn dispatch(
                     )
                     .await;
                 }
-            }
         }
         // Follow mode
         Action::ToggleFollow => {
@@ -350,26 +347,23 @@ async fn jump_to_search_match(
             if current_idx + 1 < len {
                 Box::new((current_idx + 1..len).chain(0..=current_idx))
             } else {
-                Box::new((0..len).into_iter())
+                Box::new((0..len))
             }
+        } else if current_idx > 0 {
+            Box::new((0..current_idx).rev().chain((current_idx..len).rev()))
         } else {
-            if current_idx > 0 {
-                Box::new((0..current_idx).rev().chain((current_idx..len).rev()))
-            } else {
-                Box::new((0..len).rev())
-            }
+            Box::new((0..len).rev())
         };
 
         for idx in range {
             let abs_line = matched[idx];
             let lines = tab.reader.read_specific_lines(&[abs_line]).await;
-            if let Some(line_text) = lines.first() {
-                if line_text.to_lowercase().contains(&query) {
+            if let Some(line_text) = lines.first()
+                && line_text.to_lowercase().contains(&query) {
                     drop(matched);
                     tab.panes[pane_idx].selected_line = idx;
                     return;
                 }
-            }
         }
     } else {
         let scan_count = max_lines.min(5000);

@@ -64,11 +64,10 @@ impl CommandHandler {
                 };
                 return Action::EnterVisual;
             }
-            if let KeyCode::Char(c) = key.code {
-                if c.is_ascii_digit() {
+            if let KeyCode::Char(c) = key.code
+                && c.is_ascii_digit() {
                     return Action::FocusPane(c.to_digit(10).unwrap() as usize);
                 }
-            }
         }
 
         self.pending_keys.push(KeyCombo::unshifted(&key));
@@ -100,9 +99,9 @@ impl CommandHandler {
                 self.pending_keys.clear();
                 if action_id == ActionId::Yank {
                     self.mode = Mode::Normal;
-                    return Action::Yank(anchor);
+                    Action::Yank(anchor)
                 } else if action_id == ActionId::ScrollDown || action_id == ActionId::ScrollUp {
-                    return self.execute_action(action_id, Default::default());
+                    self.execute_action(action_id, Default::default())
                 } else {
                     Action::None
                 }

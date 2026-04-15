@@ -70,11 +70,10 @@ impl Tab {
         let mut to_remove = vec![idx];
         let mut i = idx + 1;
         while i < self.panes.len() {
-            if let Some(parent) = self.panes[i].parent_pane {
-                if to_remove.contains(&parent) {
+            if let Some(parent) = self.panes[i].parent_pane
+                && to_remove.contains(&parent) {
                     to_remove.push(i);
                 }
-            }
             i += 1;
         }
 

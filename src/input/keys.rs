@@ -66,7 +66,7 @@ impl KeyCombo {
             KeyCode::Insert => key_str.push_str("Ins"),
             KeyCode::F(n) => key_str.push_str(&format!("F{}", n)),
             KeyCode::Esc => key_str.push_str("Esc"),
-            _ => key_str.push_str("?"),
+            _ => key_str.push('?'),
         }
         key_str
     }

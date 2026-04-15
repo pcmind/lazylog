@@ -116,13 +116,12 @@ pub fn spawn_filter_task(
                                 && std_file_clone.read_exact(&mut buf).is_ok()
                             {
                                 for i in local_last..batch_end {
-                                    if processed > 0 && processed % 1000 == 0 {
-                                        if task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
+                                    if processed > 0 && processed % 1000 == 0
+                                        && task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
                                             != expected_gen_clone
                                         {
                                             break;
                                         }
-                                    }
                                     if i + 1 >= current_offsets.len() {
                                         break;
                                     }
@@ -148,13 +147,12 @@ pub fn spawn_filter_task(
                 } else {
                     let si = source_indices.as_ref().unwrap();
                     for i in local_last..batch_end {
-                        if processed > 0 && processed % 1000 == 0 {
-                            if task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
+                        if processed > 0 && processed % 1000 == 0
+                            && task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
                                 != expected_gen_clone
                             {
                                 break;
                             }
-                        }
 
                         let absolute_line = si[i];
                         if absolute_line + 1 >= current_offsets.len() {
@@ -167,8 +165,8 @@ pub fn spawn_filter_task(
 
                         if bytes > 0 {
                             buf.resize(bytes as usize, 0);
-                            if std_file_clone.seek(std::io::SeekFrom::Start(start)).is_ok() {
-                                if std_file_clone.read_exact(&mut buf).is_ok() {
+                            if std_file_clone.seek(std::io::SeekFrom::Start(start)).is_ok()
+                                && std_file_clone.read_exact(&mut buf).is_ok() {
                                     let mut matched = query_regex.is_match(&buf);
 
                                     if is_negated {
@@ -179,7 +177,6 @@ pub fn spawn_filter_task(
                                         new_matches.push(absolute_line);
                                     }
                                 }
-                            }
                         }
 
                         processed += 1;
