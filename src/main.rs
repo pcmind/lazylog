@@ -84,7 +84,7 @@ async fn prepare_frame(
 
     if let Some(tab) = app.active_tab_mut() {
         let num_panes = tab.panes.len();
-        let content_height = terminal_size.height.saturating_sub(2) as usize;
+        let content_height = terminal_size.height.saturating_sub(1) as usize;
         let collapsed_count = tab.panes.iter().enumerate()
             .filter(|(i, _)| tab.is_pane_collapsed(*i))
             .count();

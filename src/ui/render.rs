@@ -66,19 +66,11 @@ pub fn draw(
     pane_contents: &[Vec<(usize, bool, String)>],
     ctx: &RenderContext,
 ) {
-    let (tabs_area, main_area, status_area) = LayoutTree::split_main(f.size());
+    let (main_area, status_area) = LayoutTree::split_main(f.size());
 
     let search_highlight_style = Style::default().bg(Color::Yellow).fg(Color::Black).add_modifier(Modifier::BOLD);
 
-    // 1. Draw Tabs
-    let tab_info = if app.tabs.is_empty() {
-        " [No File] ".to_string()
-    } else {
-        format!(" [{}] ", app.tabs[app.active_tab].name)
-    };
-    f.render_widget(Paragraph::new(tab_info).block(Block::default().borders(Borders::BOTTOM)), tabs_area);
-
-    // 2. Draw Main Content (Panes)
+    // 1. Draw Main Content (Panes)
     if let Some(tab) = app.active_tab() {
         let expanded_panes = tab.panes.iter().enumerate()
             .filter(|(i, _)| !tab.is_pane_collapsed(*i))
