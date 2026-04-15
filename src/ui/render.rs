@@ -109,19 +109,40 @@ pub fn draw(
                     let mark_icon = if is_marked { "★ " } else { "  " };
                     let prefix = format!("{}{:>5} │ ", mark_icon, absolute_line + 1);
 
+                    let mut content_style = Style::default().fg(Color::White);
+                    for h in &app.config.highlighters {
+                        let matches = if let Some(ref re) = h.regex {
+                            re.is_match(line_text)
+                        } else if let Some(ref sub) = h.substring {
+                            line_text.contains(sub)
+                        } else { false };
+
+                        if matches {
+                            if let Some(bg) = h.bg { content_style = content_style.bg(bg); }
+                            if let Some(fg) = h.fg { content_style = content_style.fg(fg); }
+                            break;
+                        }
+                    }
+
                     let mut style = Style::default().fg(Color::White);
                     if *is_selected {
                         if i == tab.active_pane {
-                            style = style.bg(Color::Rgb(60, 60, 60)).add_modifier(Modifier::BOLD);
+                            let bg = Color::Rgb(60, 60, 60);
+                            style = style.bg(bg).add_modifier(Modifier::BOLD);
+                            content_style = content_style.bg(bg).add_modifier(Modifier::BOLD);
                         } else {
-                            style = style.bg(Color::Rgb(40, 40, 40));
+                            let bg = Color::Rgb(40, 40, 40);
+                            style = style.bg(bg);
+                            content_style = content_style.bg(bg);
                         }
                     } else if let Mode::Visual { anchor_line } = cmd_handler.mode {
                         if i == tab.active_pane {
                             let start = anchor_line.min(ctx.current_line);
                             let end = anchor_line.max(ctx.current_line);
                             if *absolute_line >= start && *absolute_line <= end {
-                                style = style.bg(Color::Rgb(20, 20, 80));
+                                let bg = Color::Rgb(20, 20, 80);
+                                style = style.bg(bg);
+                                content_style = content_style.bg(bg);
                             }
                         }
                     }
@@ -139,9 +160,9 @@ pub fn draw(
 
                     // Build content spans with search highlighting
                     let content_spans = if let Some(ref sq) = cmd_handler.search_query {
-                        build_search_spans(display_text, sq, style, search_highlight_style)
+                        build_search_spans(display_text, sq, content_style, search_highlight_style)
                     } else {
-                        vec![Span::styled(display_text.to_string(), style)]
+                        vec![Span::styled(display_text.to_string(), content_style)]
                     };
 
                     let mut line_spans = vec![span_prefix];

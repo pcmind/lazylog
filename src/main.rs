@@ -4,6 +4,7 @@ mod input;
 mod io;
 mod ui;
 mod dispatch;
+mod config;
 
 use color_eyre::Result;
 use crossterm::{

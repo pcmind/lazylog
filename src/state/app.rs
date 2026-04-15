@@ -1,6 +1,7 @@
 use crate::io::{indexer::Indexer, reader::AsyncReader};
 use crate::io::filter::spawn_filter_task;
 use crate::state::pane::Pane;
+use crate::config::Config;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -156,6 +157,7 @@ pub struct App {
     pub should_quit: bool,
     pub tabs: Vec<Tab>,
     pub active_tab: usize,
+    pub config: Config,
 }
 
 impl App {
@@ -164,6 +166,7 @@ impl App {
             should_quit: false,
             tabs: Vec::new(),
             active_tab: 0,
+            config: Config::load(),
         }
     }
 
