@@ -82,10 +82,10 @@ pub fn draw(
     // 2. Draw Main Content (Panes)
     if let Some(tab) = app.active_tab() {
         let expanded_panes = tab.panes.iter().enumerate()
-            .filter(|(i, p)| !(p.is_filter && *i != tab.active_pane))
+            .filter(|(i, _)| !tab.is_pane_collapsed(*i))
             .count() as u32;
-        let constraints: Vec<Constraint> = tab.panes.iter().enumerate().map(|(i, pane)| {
-            if pane.is_filter && i != tab.active_pane {
+        let constraints: Vec<Constraint> = tab.panes.iter().enumerate().map(|(i, _pane)| {
+            if tab.is_pane_collapsed(i) {
                 Constraint::Length(1)
             } else if expanded_panes == 1 {
                 Constraint::Percentage(100)
@@ -150,7 +150,7 @@ pub fn draw(
                 }
             }
 
-            let is_collapsed = pane.is_filter && i != tab.active_pane;
+            let is_collapsed = tab.is_pane_collapsed(i);
             let title = if pane.is_filter {
                 let r_flag = if pane.is_regex { "R" } else { "S" };
                 let n_flag = if pane.is_negated { "N" } else { "-" };

@@ -295,6 +295,7 @@ impl CommandHandler {
             ActionId::NextSearchResult => Action::NextSearchResult,
             ActionId::PrevSearchResult => Action::PrevSearchResult,
             ActionId::ToggleFollow => Action::ToggleFollow,
+            ActionId::TogglePinFilter => Action::TogglePinFilter,
         }
     }
 }

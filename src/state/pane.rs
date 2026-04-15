@@ -18,6 +18,7 @@ pub struct Pane {
     pub matched_lines: Arc<RwLock<Vec<usize>>>,
     pub task_generation: Arc<AtomicUsize>,
     pub parent_pane: Option<usize>,
+    pub is_pinned: bool,
 }
 
 impl Pane {
@@ -36,6 +37,7 @@ impl Pane {
             matched_lines: Arc::new(RwLock::new(Vec::new())),
             task_generation: Arc::new(AtomicUsize::new(0)),
             parent_pane: None,
+            is_pinned: false,
         }
     }
 

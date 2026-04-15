@@ -86,7 +86,7 @@ async fn prepare_frame(
         let num_panes = tab.panes.len();
         let content_height = terminal_size.height.saturating_sub(2) as usize;
         let collapsed_count = tab.panes.iter().enumerate()
-            .filter(|(i, p)| p.is_filter && *i != tab.active_pane)
+            .filter(|(i, _)| tab.is_pane_collapsed(*i))
             .count();
         let expanded_count = num_panes - collapsed_count;
         let usable_height = content_height.saturating_sub(collapsed_count);
@@ -118,9 +118,14 @@ async fn prepare_frame(
         active_is_following = tab.panes[tab.active_pane].is_following;
         is_filter_pane = tab.panes[tab.active_pane].is_filter;
 
+        let mut collapsed_flags = Vec::with_capacity(tab.panes.len());
+        for i in 0..tab.panes.len() {
+            collapsed_flags.push(tab.is_pane_collapsed(i));
+        }
+
         // Update pane heights and scroll offsets
         for (i, pane) in tab.panes.iter_mut().enumerate() {
-            if pane.is_filter && i != tab.active_pane {
+            if collapsed_flags[i] {
                 pane.height = 0;
             } else {
                 if expanded_count == 1 {

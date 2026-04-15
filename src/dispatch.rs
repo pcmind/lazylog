@@ -118,6 +118,14 @@ pub async fn dispatch(
                 }
             }
         }
+        Action::TogglePinFilter => {
+            if let Some(tab) = app.active_tab_mut() {
+                let ap = tab.active_pane;
+                if tab.panes[ap].is_filter {
+                    tab.panes[ap].is_pinned = !tab.panes[ap].is_pinned;
+                }
+            }
+        }
         Action::ToggleInterleave => {
             if let Some(tab) = app.active_tab_mut() {
                 let ap = tab.active_pane;

@@ -33,6 +33,14 @@ impl Tab {
         }
     }
 
+    pub fn is_pane_collapsed(&self, idx: usize) -> bool {
+        let pane = &self.panes[idx];
+        if !pane.is_filter { return false; }
+        if idx == self.active_pane { return false; }
+        if pane.is_pinned { return false; }
+        true
+    }
+
     pub fn add_filter(&mut self, query: String, parent_pane: Option<usize>) {
         let mut new_pane = Pane::new(true, Some(query));
         new_pane.parent_pane = parent_pane;
