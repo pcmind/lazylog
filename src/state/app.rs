@@ -45,6 +45,9 @@ impl Tab {
     pub fn add_filter(&mut self, query: String, parent_pane: Option<usize>) {
         let mut new_pane = Pane::new(true, Some(query));
         new_pane.parent_pane = parent_pane;
+        if self.panes.len() == 1 {
+            new_pane.is_pinned = true;
+        }
         self.panes.push(new_pane);
         self.update_filter_pane(self.panes.len() - 1);
     }
