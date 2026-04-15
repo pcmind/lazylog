@@ -5,6 +5,7 @@ pub enum Mode {
     Search,
     Help,
     Visual { anchor_line: usize },
+    LineDetail,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -23,6 +24,8 @@ pub enum ActionId {
     BeginSearch, NextSearchResult, PrevSearchResult,
     // Follow
     ToggleFollow,
+    // Line detail
+    ShowLineDetail,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,6 +76,7 @@ pub enum Action {
     ClearSearch,
     // Follow
     ToggleFollow,
+    ShowLineDetail,
     None,
 }
 

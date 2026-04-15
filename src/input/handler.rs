@@ -16,6 +16,7 @@ pub struct CommandHandler {
     pub search_query: Option<String>,
     // Help filter state
     pub help_filter: String,
+    pub detail_text: Option<String>,
 }
 
 impl CommandHandler {
@@ -30,6 +31,7 @@ impl CommandHandler {
             search_input: String::new(),
             search_query: None,
             help_filter: String::new(),
+            detail_text: None,
         }
     }
 
@@ -46,6 +48,7 @@ impl CommandHandler {
             Mode::Search => self.handle_search(key),
             Mode::Help => self.handle_help(key),
             Mode::Visual { anchor_line } => self.handle_visual(key, anchor_line),
+            Mode::LineDetail => self.handle_line_detail(key),
         }
     }
 
@@ -237,7 +240,17 @@ impl CommandHandler {
             _ => Action::None,
         }
     }
-
+ 
+    fn handle_line_detail(&mut self, key: KeyEvent) -> Action {
+        match key.code {
+            KeyCode::Esc | KeyCode::Enter | KeyCode::Char('q') => {
+                self.mode = Mode::Normal;
+                Action::None
+            }
+            _ => Action::None,
+        }
+    }
+ 
     fn execute_action(&mut self, action_id: ActionId, _current_line: usize) -> Action {
         match action_id {
             ActionId::Quit => Action::Quit,
@@ -285,6 +298,7 @@ impl CommandHandler {
             ActionId::PrevSearchResult => Action::PrevSearchResult,
             ActionId::ToggleFollow => Action::ToggleFollow,
             ActionId::TogglePinFilter => Action::TogglePinFilter,
+            ActionId::ShowLineDetail => Action::ShowLineDetail,
         }
     }
 }

@@ -244,6 +244,23 @@ pub async fn dispatch(
                 }
             }
         }
+        Action::ShowLineDetail => {
+            if let Some(tab) = app.active_tab_mut() {
+                let ap = tab.active_pane;
+                let target_line = if tab.panes[ap].is_filter {
+                    let matched = tab.panes[ap].matched_lines.read().await;
+                    matched.get(tab.panes[ap].selected_line).copied().unwrap_or(0)
+                } else {
+                    tab.panes[ap].selected_line
+                };
+
+                let lines = tab.reader.read_specific_lines(&[target_line]).await;
+                if let Some(line) = lines.first() {
+                    cmd_handler.detail_text = Some(line.clone());
+                    cmd_handler.mode = Mode::LineDetail;
+                }
+            }
+        }
         Action::BeginSearch
         | Action::ClearSearch
         | Action::EnterVisual

@@ -145,6 +145,7 @@ impl KeyRegistry {
         push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::empty(), ActionId::ClosePane, "Close", "Close current pane", BindingContext::FilterPane, true);
         push1(&mut bindings, KeyCode::Char('x'), KeyModifiers::SHIFT, ActionId::CloseOtherPanes, "Close Other", "Close all other panes", BindingContext::Always, false);
         push1(&mut bindings, KeyCode::Char('?'), KeyModifiers::empty(), ActionId::ShowHelp, "Help", "Show keybindings menu", BindingContext::Always, true);
+        push1(&mut bindings, KeyCode::Char(' '), KeyModifiers::empty(), ActionId::ShowLineDetail, "Detail", "Show full line in a popup", BindingContext::Always, true);
 
         // Search (visible)
         push1(&mut bindings, KeyCode::Char('/'), KeyModifiers::empty(), ActionId::BeginSearch, "Search", "Search in current view", BindingContext::MainPane, true);

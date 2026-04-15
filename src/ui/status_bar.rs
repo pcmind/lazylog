@@ -44,6 +44,7 @@ impl StatusBar {
             Mode::Search => " SEARCH ",
             Mode::Help => " HELP ",
             Mode::Visual { .. } => " VISUAL ",
+            Mode::LineDetail => " DETAIL ",
         };
 
         let mut spans = vec![
@@ -143,6 +144,10 @@ impl StatusBar {
                 hints_spans.push(Span::styled("Navigate  ", Style::default().fg(Color::White)));
                 hints_spans.push(Span::styled("[Enter] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Execute  ", Style::default().fg(Color::White)));
+            }
+            Mode::LineDetail => {
+                hints_spans.push(Span::styled("[Esc/q] ", Style::default().fg(Color::Cyan)));
+                hints_spans.push(Span::styled("Close  ", Style::default().fg(Color::White)));
             }
         }
 

@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Layout, Direction, Constraint, Alignment},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, block::Title},
+    widgets::{Block, Borders, Paragraph, Clear, Wrap, block::Title},
     Frame,
 };
 
@@ -210,8 +210,50 @@ pub fn draw(
     // 3. Draw Status bar
     f.render_widget(StatusBar::render(cmd_handler, ctx), status_area);
 
-    // 4. Help overlay
+    // 4. Overlays (Help / Line Detail)
     if cmd_handler.mode == Mode::Help {
         render_help_popup(f, &cmd_handler.registry, cmd_handler.help_selected, &cmd_handler.help_filter);
+    } else if cmd_handler.mode == Mode::LineDetail {
+        if let Some(text) = &cmd_handler.detail_text {
+            render_line_detail_popup(f, text);
+        }
     }
+}
+
+fn render_line_detail_popup(f: &mut Frame, text: &str) {
+    let size = f.size();
+
+    // Centered 80x80% area
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(10),
+            Constraint::Percentage(80),
+            Constraint::Percentage(10),
+        ])
+        .split(size);
+
+    let popup_area = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(10),
+            Constraint::Percentage(80),
+            Constraint::Percentage(10),
+        ])
+        .split(popup_layout[1])[1];
+
+    f.render_widget(Clear, popup_area);
+
+    let block = Block::default()
+        .title(" Line Detail ")
+        .title_alignment(Alignment::Center)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let paragraph = Paragraph::new(text)
+        .block(block)
+        .wrap(Wrap { trim: false })
+        .style(Style::default().fg(Color::White));
+
+    f.render_widget(paragraph, popup_area);
 }
