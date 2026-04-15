@@ -14,6 +14,14 @@ pub struct HighlighterConfig {
     pub bg: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct TransformerConfig {
+    pub pattern: String,
+    #[serde(default)]
+    pub is_regex: bool,
+    pub command: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct Highlighter {
     pub regex: Option<Regex>,
@@ -22,15 +30,25 @@ pub struct Highlighter {
     pub bg: Option<Color>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Transformer {
+    pub regex: Option<Regex>,
+    pub substring: Option<String>,
+    pub command: String,
+}
+
 #[derive(Debug, Deserialize, Default)]
 pub struct ConfigData {
     #[serde(default)]
     pub highlighter: Vec<HighlighterConfig>,
+    #[serde(default)]
+    pub transformer: Vec<TransformerConfig>,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct Config {
     pub highlighters: Vec<Highlighter>,
+    pub transformers: Vec<Transformer>,
 }
 
 impl Config {
@@ -52,6 +70,12 @@ fg = "Red"
 pattern = "WARN"
 is_regex = false
 fg = "Yellow"
+
+# Example transformer: pretty-print JSON when viewing line details (Space)
+# [[transformer]]
+# pattern = "\\{.*\\}"
+# is_regex = true
+# command = "jq ."
 "#;
             let _ = fs::write(&config_path, default_toml);
         }
@@ -86,6 +110,27 @@ fg = "Yellow"
             });
         }
 
-        Config { highlighters }
+        let mut transformers = Vec::new();
+        for t in data.transformer {
+            let mut regex = None;
+            let mut substring = None;
+
+            if t.is_regex {
+                regex = Regex::new(&t.pattern).ok();
+            } else {
+                substring = Some(t.pattern.clone());
+            }
+
+            transformers.push(Transformer {
+                regex,
+                substring,
+                command: t.command,
+            });
+        }
+
+        Config { 
+            highlighters,
+            transformers,
+        }
     }
 }

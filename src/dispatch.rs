@@ -1,6 +1,7 @@
 use crate::state::action::{Action, FilterIntent, Mode};
 use crate::state::app::{App, Tab};
 use crate::input::handler::CommandHandler;
+use crate::io::process::apply_transformers;
 
 /// Dispatch an Action to mutate app state.
 pub async fn dispatch(
@@ -256,7 +257,8 @@ pub async fn dispatch(
 
                 let lines = tab.reader.read_specific_lines(&[target_line]).await;
                 if let Some(line) = lines.first() {
-                    cmd_handler.detail_text = Some(line.clone());
+                    let text = apply_transformers(line.clone(), &app.config).await;
+                    cmd_handler.detail_text = Some(text);
                     cmd_handler.mode = Mode::LineDetail;
                 }
             }
