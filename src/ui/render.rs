@@ -1,8 +1,8 @@
 use ratatui::{
-    layout::{Layout, Direction, Constraint},
+    layout::{Layout, Direction, Constraint, Alignment},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, block::Title},
     Frame,
 };
 
@@ -10,7 +10,7 @@ use crate::state::action::Mode;
 use crate::state::app::App;
 use crate::input::handler::CommandHandler;
 use crate::ui::layout::LayoutTree;
-use crate::ui::status_bar::StatusBar;
+use crate::ui::status_bar::{StatusBar, compact_num, compact_size};
 use crate::ui::help::render_help_popup;
 
 /// Bundles render-time state that doesn't belong to App or CommandHandler.
@@ -183,7 +183,7 @@ pub fn draw(
                 format!(" [{}] {}{} ", i, tab.name, follow_mark)
             };
 
-            let block = if is_collapsed {
+            let mut block = if is_collapsed {
                 Block::default()
                     .borders(Borders::TOP)
                     .title(title)
@@ -194,6 +194,14 @@ pub fn draw(
                     .title(title)
                     .border_style(if i == tab.active_pane { Style::default().fg(Color::Yellow) } else { Style::default() })
             };
+
+            if pane.is_filter {
+                let count = pane.matched_lines.try_read().map(|m| m.len()).unwrap_or(0);
+                block = block.title(Title::from(format!(" {} results ", compact_num(count))).alignment(Alignment::Right));
+            } else if i == 0 {
+                let size_str = compact_size(ctx.file_size);
+                block = block.title(Title::from(format!(" {} ", size_str)).alignment(Alignment::Right));
+            }
 
             f.render_widget(Paragraph::new(text_lines).block(block), pane_rects[i]);
         }

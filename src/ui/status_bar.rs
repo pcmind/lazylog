@@ -9,7 +9,7 @@ use ratatui::{
 
 pub struct StatusBar;
 
-fn compact_num(n: usize) -> String {
+pub fn compact_num(n: usize) -> String {
     if n < 1000 {
         n.to_string()
     } else if n < 1_000_000 {
@@ -19,7 +19,7 @@ fn compact_num(n: usize) -> String {
     }
 }
 
-fn compact_size(n: u64) -> String {
+pub fn compact_size(n: u64) -> String {
     if n < 1024 {
         format!("{}B", n)
     } else if n < 1024 * 1024 {
@@ -75,21 +75,6 @@ impl StatusBar {
             spans.push(Span::styled(
                 prefix_str,
                 Style::default().bg(Color::LightRed).fg(Color::Black).add_modifier(Modifier::BOLD),
-            ));
-        }
-
-        let metrics_str = if ctx.is_filter_pane {
-            format!(" | {} Matches ", compact_num(ctx.pane_total_lines))
-        } else if ctx.total_lines > 0 {
-            format!(" | {} Lines({}) ", compact_num(ctx.total_lines), compact_size(ctx.file_size))
-        } else {
-            String::new()
-        };
-
-        if !metrics_str.is_empty() {
-            spans.push(Span::styled(
-                metrics_str,
-                Style::default().bg(Color::White).fg(Color::Black).add_modifier(Modifier::BOLD),
             ));
         }
 
