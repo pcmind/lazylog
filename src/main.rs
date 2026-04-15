@@ -79,7 +79,6 @@ async fn prepare_frame(
     let mut total_lines = 0;
     let mut file_size: u64 = 0;
     let mut current_line = 0;
-    let mut pane_total_lines = 0;
     let mut active_is_following = false;
     let mut is_filter_pane = false;
 
@@ -104,14 +103,9 @@ async fn prepare_frame(
             if pane.is_filter {
                 let ml = pane.matched_lines.try_read();
                 if let Ok(ml_guard) = ml {
-                    pane_total_lines = ml_guard.len();
-                    if pane.show_bookmarks {
-                        pane_total_lines += tab.bookmarks.len();
-                    }
                     ml_guard.get(pane.selected_line).copied().unwrap_or(0)
                 } else { 0 }
             } else {
-                pane_total_lines = total_lines;
                 pane.selected_line
             }
         };
@@ -232,7 +226,6 @@ async fn prepare_frame(
 
     let ctx = RenderContext {
         current_line,
-        pane_total_lines,
         total_lines,
         file_size,
         is_following: active_is_following,
