@@ -46,7 +46,6 @@ async fn main() -> Result<()> {
         if let Some(event) = events.next().await {
             match event {
                 Event::Key(key) => {
-                    cmd_handler.check_timeout();
                     let action = cmd_handler.handle_key(key, ctx.current_line);
                     dispatch::dispatch(action, &mut app, &mut cmd_handler, ctx.total_lines, ctx.current_line).await;
                 }

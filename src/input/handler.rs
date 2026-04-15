@@ -1,5 +1,4 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use std::time::Instant;
 
 use crate::state::action::{Action, ActionId, FilterIntent, Mode};
 use crate::input::keys::{KeyCombo, KeyRegistry, LookupResult};
@@ -11,7 +10,6 @@ pub struct CommandHandler {
     pub filter_intent: FilterIntent,
     pub help_selected: usize,
     pub pending_keys: Vec<KeyCombo>,
-    pub pending_timeout: Instant,
     pub registry: KeyRegistry,
     // Search state
     pub search_input: String,
@@ -28,7 +26,6 @@ impl CommandHandler {
             filter_intent: FilterIntent::New,
             help_selected: 0,
             pending_keys: Vec::new(),
-            pending_timeout: Instant::now(),
             registry: KeyRegistry::default_bindings(),
             search_input: String::new(),
             search_query: None,
@@ -36,19 +33,12 @@ impl CommandHandler {
         }
     }
 
-    pub fn check_timeout(&mut self) -> Action {
-        if !self.pending_keys.is_empty() && self.pending_timeout.elapsed().as_millis() > 1500 {
-            self.pending_keys.clear();
-        }
-        Action::None
-    }
 
     pub fn handle_key(&mut self, key: KeyEvent, current_line: usize) -> Action {
         if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
             return Action::Quit;
         }
 
-        self.check_timeout();
 
         match self.mode {
             Mode::Normal => self.handle_normal(key, current_line),
@@ -79,7 +69,6 @@ impl CommandHandler {
         }
 
         self.pending_keys.push(KeyCombo::unshifted(&key));
-        self.pending_timeout = Instant::now();
 
         match self.registry.lookup(&self.pending_keys) {
             LookupResult::ExactMatch(action_id) => {
@@ -104,7 +93,6 @@ impl CommandHandler {
         }
 
         self.pending_keys.push(KeyCombo::unshifted(&key));
-        self.pending_timeout = Instant::now();
 
         match self.registry.lookup(&self.pending_keys) {
             LookupResult::ExactMatch(action_id) => {
