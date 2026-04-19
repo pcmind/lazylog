@@ -81,15 +81,16 @@ impl StatusBar {
 
         // Active search query badge (in Normal mode)
         if matches!(cmd.mode, Mode::Normal)
-            && let Some(q) = &cmd.search_query {
-                spans.push(Span::styled(
-                    format!(" /{} ", q),
-                    Style::default()
-                        .bg(Color::Yellow)
-                        .fg(Color::Black)
-                        .add_modifier(Modifier::BOLD),
-                ));
-            }
+            && let Some(q) = &cmd.search_query
+        {
+            spans.push(Span::styled(
+                format!(" /{} ", q),
+                Style::default()
+                    .bg(Color::Yellow)
+                    .fg(Color::Black)
+                    .add_modifier(Modifier::BOLD),
+            ));
+        }
 
         if !prefix_str.is_empty() {
             spans.push(Span::styled(

@@ -155,15 +155,16 @@ pub fn draw(
                             content_style = content_style.bg(bg);
                         }
                     } else if let Mode::Visual { anchor_line } = cmd_handler.mode
-                        && i == tab.active_pane {
-                            let start = anchor_line.min(ctx.current_line);
-                            let end = anchor_line.max(ctx.current_line);
-                            if *absolute_line >= start && *absolute_line <= end {
-                                let bg = Color::Rgb(20, 20, 80);
-                                style = style.bg(bg);
-                                content_style = content_style.bg(bg);
-                            }
+                        && i == tab.active_pane
+                    {
+                        let start = anchor_line.min(ctx.current_line);
+                        let end = anchor_line.max(ctx.current_line);
+                        if *absolute_line >= start && *absolute_line <= end {
+                            let bg = Color::Rgb(20, 20, 80);
+                            style = style.bg(bg);
+                            content_style = content_style.bg(bg);
                         }
+                    }
 
                     let span_prefix = Span::styled(
                         prefix,
@@ -264,9 +265,10 @@ pub fn draw(
             &cmd_handler.help_filter,
         );
     } else if cmd_handler.mode == Mode::LineDetail
-        && let Some(text) = &cmd_handler.detail_text {
-            render_line_detail_popup(f, text);
-        }
+        && let Some(text) = &cmd_handler.detail_text
+    {
+        render_line_detail_popup(f, text);
+    }
 }
 
 fn render_line_detail_popup(f: &mut Frame, text: &str) {

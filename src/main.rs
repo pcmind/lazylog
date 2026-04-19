@@ -168,9 +168,7 @@ async fn prepare_frame(
             let pane = &tab.panes[p_idx];
             if pane.is_filter {
                 let matched_lines = pane.matched_lines.read().await;
-                let visible_indices: Vec<usize>;
-
-                if pane.show_bookmarks {
+                let visible_indices: Vec<usize> = if pane.show_bookmarks {
                     let mut book_vec: Vec<usize> = tab.bookmarks.iter().copied().collect();
                     book_vec.sort_unstable();
 
@@ -205,19 +203,19 @@ async fn prepare_frame(
                         }
                     }
 
-                    visible_indices = union
+                    union
                         .into_iter()
                         .skip(pane.scroll_offset)
                         .take(pane.height)
-                        .collect();
+                        .collect()
                 } else {
-                    visible_indices = matched_lines
+                    matched_lines
                         .iter()
                         .skip(pane.scroll_offset)
                         .take(pane.height)
                         .copied()
-                        .collect();
-                }
+                        .collect()
+                };
 
                 let lines = tab.reader.read_specific_lines(&visible_indices).await;
                 let lines_with_info: Vec<(usize, bool, String)> = lines

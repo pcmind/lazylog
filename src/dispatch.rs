@@ -155,9 +155,10 @@ pub async fn dispatch(
         }
         Action::FocusPane(idx) => {
             if let Some(tab) = app.active_tab_mut()
-                && idx < tab.panes.len() {
-                    tab.active_pane = idx;
-                }
+                && idx < tab.panes.len()
+            {
+                tab.active_pane = idx;
+            }
         }
         Action::ClosePane => {
             if let Some(tab) = app.active_tab_mut() {
@@ -217,35 +218,23 @@ pub async fn dispatch(
         }
         Action::NextSearchResult => {
             if cmd_handler.search_query.is_some()
-                && let Some(tab) = app.active_tab_mut() {
-                    let ap = tab.active_pane;
-                    let max = get_max_lines(tab, ap, total_lines).await;
-                    jump_to_search_match(
-                        tab,
-                        ap,
-                        max,
-                        &cmd_handler.search_query,
-                        current_line,
-                        true,
-                    )
+                && let Some(tab) = app.active_tab_mut()
+            {
+                let ap = tab.active_pane;
+                let max = get_max_lines(tab, ap, total_lines).await;
+                jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, true)
                     .await;
-                }
+            }
         }
         Action::PrevSearchResult => {
             if cmd_handler.search_query.is_some()
-                && let Some(tab) = app.active_tab_mut() {
-                    let ap = tab.active_pane;
-                    let max = get_max_lines(tab, ap, total_lines).await;
-                    jump_to_search_match(
-                        tab,
-                        ap,
-                        max,
-                        &cmd_handler.search_query,
-                        current_line,
-                        false,
-                    )
+                && let Some(tab) = app.active_tab_mut()
+            {
+                let ap = tab.active_pane;
+                let max = get_max_lines(tab, ap, total_lines).await;
+                jump_to_search_match(tab, ap, max, &cmd_handler.search_query, current_line, false)
                     .await;
-                }
+            }
         }
         // Follow mode
         Action::ToggleFollow => {
@@ -347,7 +336,7 @@ async fn jump_to_search_match(
             if current_idx + 1 < len {
                 Box::new((current_idx + 1..len).chain(0..=current_idx))
             } else {
-                Box::new((0..len))
+                Box::new(0..len)
             }
         } else if current_idx > 0 {
             Box::new((0..current_idx).rev().chain((current_idx..len).rev()))
@@ -359,11 +348,12 @@ async fn jump_to_search_match(
             let abs_line = matched[idx];
             let lines = tab.reader.read_specific_lines(&[abs_line]).await;
             if let Some(line_text) = lines.first()
-                && line_text.to_lowercase().contains(&query) {
-                    drop(matched);
-                    tab.panes[pane_idx].selected_line = idx;
-                    return;
-                }
+                && line_text.to_lowercase().contains(&query)
+            {
+                drop(matched);
+                tab.panes[pane_idx].selected_line = idx;
+                return;
+            }
         }
     } else {
         let scan_count = max_lines.min(5000);

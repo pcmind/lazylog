@@ -48,8 +48,8 @@ impl Indexer {
                         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                     }
                     Ok(bytes_read) => {
-                        for i in 0..bytes_read {
-                            if buffer[i] == b'\n' {
+                        for (i, &byte) in buffer.iter().enumerate().take(bytes_read) {
+                            if byte == b'\n' {
                                 batch.push(current_offset + i as u64 + 1);
                             }
                         }

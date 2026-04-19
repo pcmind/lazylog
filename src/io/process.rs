@@ -33,9 +33,10 @@ async fn run_command(cmd_str: &str, input: &str) -> tokio::io::Result<String> {
         .stderr(Stdio::piped())
         .spawn()?;
 
-    let mut stdin = child.stdin.take().ok_or_else(|| {
-        tokio::io::Error::other("Failed to open stdin")
-    })?;
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| tokio::io::Error::other("Failed to open stdin"))?;
 
     let input_bytes = input.as_bytes().to_vec();
 
@@ -50,8 +51,9 @@ async fn run_command(cmd_str: &str, input: &str) -> tokio::io::Result<String> {
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     } else {
-        Err(tokio::io::Error::other(
-            format!("Command failed with status: {}", output.status),
-        ))
+        Err(tokio::io::Error::other(format!(
+            "Command failed with status: {}",
+            output.status
+        )))
     }
 }

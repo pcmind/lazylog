@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::io::filter::spawn_filter_task;
+use crate::io::filter::{FilterParams, spawn_filter_task};
 use crate::io::{indexer::Indexer, reader::AsyncReader};
 use crate::state::pane::Pane;
 use std::collections::HashSet;
@@ -71,9 +71,10 @@ impl Tab {
         let mut i = idx + 1;
         while i < self.panes.len() {
             if let Some(parent) = self.panes[i].parent_pane
-                && to_remove.contains(&parent) {
-                    to_remove.push(i);
-                }
+                && to_remove.contains(&parent)
+            {
+                to_remove.push(i);
+            }
             i += 1;
         }
 
@@ -167,7 +168,7 @@ impl Tab {
         let offsets = self.indexer.offsets.clone();
         let filepath = self.filepath.clone();
 
-        spawn_filter_task(
+        spawn_filter_task(FilterParams {
             filepath,
             offsets,
             query,
@@ -178,7 +179,7 @@ impl Tab {
             task_generation,
             expected_gen,
             parent_matched,
-        );
+        });
     }
 }
 

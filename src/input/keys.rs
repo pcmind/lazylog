@@ -508,7 +508,7 @@ impl KeyRegistry {
 
     pub fn lookup(&self, sequence: &[KeyCombo]) -> LookupResult {
         if sequence.is_empty() {
-            return LookupResult::NoMatch;
+            return LookupResult::None;
         }
 
         let mut partials = Vec::new();
@@ -525,11 +525,11 @@ impl KeyRegistry {
         }
 
         if let Some(e) = exact {
-            LookupResult::ExactMatch(e.action)
+            LookupResult::Exact(e.action)
         } else if !partials.is_empty() {
-            LookupResult::PartialMatch
+            LookupResult::Partial
         } else {
-            LookupResult::NoMatch
+            LookupResult::None
         }
     }
 
@@ -589,7 +589,7 @@ impl KeyRegistry {
 }
 
 pub enum LookupResult {
-    ExactMatch(ActionId),
-    PartialMatch,
-    NoMatch,
+    Exact(ActionId),
+    Partial,
+    None,
 }

@@ -3,19 +3,33 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicUsize;
 use tokio::sync::RwLock;
 
+pub struct FilterParams {
+    pub filepath: PathBuf,
+    pub offsets: Arc<RwLock<Vec<u64>>>,
+    pub query: String,
+    pub is_regex: bool,
+    pub is_negated: bool,
+    pub is_case_sensitive: bool,
+    pub matched_lines: Arc<RwLock<Vec<usize>>>,
+    pub task_generation: Arc<AtomicUsize>,
+    pub expected_gen: usize,
+    pub parent_matched: Option<Arc<RwLock<Vec<usize>>>>,
+}
+
 /// Spawns a background task that scans lines for matches and populates `matched_lines`.
-pub fn spawn_filter_task(
-    filepath: PathBuf,
-    offsets: Arc<RwLock<Vec<u64>>>,
-    query: String,
-    is_regex: bool,
-    is_negated: bool,
-    is_case_sensitive: bool,
-    matched_lines: Arc<RwLock<Vec<usize>>>,
-    task_generation: Arc<AtomicUsize>,
-    expected_gen: usize,
-    parent_matched: Option<Arc<RwLock<Vec<usize>>>>,
-) {
+pub fn spawn_filter_task(params: FilterParams) {
+    let FilterParams {
+        filepath,
+        offsets,
+        query,
+        is_regex,
+        is_negated,
+        is_case_sensitive,
+        matched_lines,
+        task_generation,
+        expected_gen,
+        parent_matched,
+    } = params;
     tokio::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         if task_generation.load(std::sync::atomic::Ordering::Relaxed) != expected_gen {
@@ -99,7 +113,44 @@ pub fn spawn_filter_task(
                 let mut new_matches = Vec::new();
                 let mut processed = 0;
 
-                if source_indices.is_none() {
+                if let Some(si) = &source_indices {
+                    for &absolute_line in si.iter().take(batch_end).skip(local_last) {
+                        if processed > 0
+                            && processed % 1000 == 0
+                            && task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
+                                != expected_gen_clone
+                        {
+                            break;
+                        }
+
+                        if absolute_line + 1 >= current_offsets.len() {
+                            break;
+                        }
+
+                        let start = current_offsets[absolute_line];
+                        let end = current_offsets[absolute_line + 1];
+                        let bytes = end.saturating_sub(start);
+
+                        if bytes > 0 {
+                            buf.resize(bytes as usize, 0);
+                            if std_file_clone.seek(std::io::SeekFrom::Start(start)).is_ok()
+                                && std_file_clone.read_exact(&mut buf).is_ok()
+                            {
+                                let mut matched = query_regex.is_match(&buf);
+
+                                if is_negated {
+                                    matched = !matched;
+                                }
+
+                                if matched {
+                                    new_matches.push(absolute_line);
+                                }
+                            }
+                        }
+
+                        processed += 1;
+                    }
+                } else {
                     let first_line = local_last;
                     let last_line = batch_end.saturating_sub(1);
                     if first_line < current_offsets.len() {
@@ -116,12 +167,13 @@ pub fn spawn_filter_task(
                                 && std_file_clone.read_exact(&mut buf).is_ok()
                             {
                                 for i in local_last..batch_end {
-                                    if processed > 0 && processed % 1000 == 0
+                                    if processed > 0
+                                        && processed % 1000 == 0
                                         && task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
                                             != expected_gen_clone
-                                        {
-                                            break;
-                                        }
+                                    {
+                                        break;
+                                    }
                                     if i + 1 >= current_offsets.len() {
                                         break;
                                     }
@@ -143,43 +195,6 @@ pub fn spawn_filter_task(
                                 }
                             }
                         }
-                    }
-                } else {
-                    let si = source_indices.as_ref().unwrap();
-                    for i in local_last..batch_end {
-                        if processed > 0 && processed % 1000 == 0
-                            && task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
-                                != expected_gen_clone
-                            {
-                                break;
-                            }
-
-                        let absolute_line = si[i];
-                        if absolute_line + 1 >= current_offsets.len() {
-                            break;
-                        }
-
-                        let start = current_offsets[absolute_line];
-                        let end = current_offsets[absolute_line + 1];
-                        let bytes = end.saturating_sub(start);
-
-                        if bytes > 0 {
-                            buf.resize(bytes as usize, 0);
-                            if std_file_clone.seek(std::io::SeekFrom::Start(start)).is_ok()
-                                && std_file_clone.read_exact(&mut buf).is_ok() {
-                                    let mut matched = query_regex.is_match(&buf);
-
-                                    if is_negated {
-                                        matched = !matched;
-                                    }
-
-                                    if matched {
-                                        new_matches.push(absolute_line);
-                                    }
-                                }
-                        }
-
-                        processed += 1;
                     }
                 }
                 (new_matches, processed)

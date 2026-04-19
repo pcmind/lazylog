@@ -65,20 +65,21 @@ impl CommandHandler {
                 return Action::EnterVisual;
             }
             if let KeyCode::Char(c) = key.code
-                && c.is_ascii_digit() {
-                    return Action::FocusPane(c.to_digit(10).unwrap() as usize);
-                }
+                && c.is_ascii_digit()
+            {
+                return Action::FocusPane(c.to_digit(10).unwrap() as usize);
+            }
         }
 
         self.pending_keys.push(KeyCombo::unshifted(&key));
 
         match self.registry.lookup(&self.pending_keys) {
-            LookupResult::ExactMatch(action_id) => {
+            LookupResult::Exact(action_id) => {
                 self.pending_keys.clear();
                 self.execute_action(action_id, current_line)
             }
-            LookupResult::PartialMatch => Action::None,
-            LookupResult::NoMatch => {
+            LookupResult::Partial => Action::None,
+            LookupResult::None => {
                 self.pending_keys.clear();
                 Action::None
             }
@@ -95,7 +96,7 @@ impl CommandHandler {
         self.pending_keys.push(KeyCombo::unshifted(&key));
 
         match self.registry.lookup(&self.pending_keys) {
-            LookupResult::ExactMatch(action_id) => {
+            LookupResult::Exact(action_id) => {
                 self.pending_keys.clear();
                 if action_id == ActionId::Yank {
                     self.mode = Mode::Normal;
@@ -106,8 +107,8 @@ impl CommandHandler {
                     Action::None
                 }
             }
-            LookupResult::PartialMatch => Action::None,
-            LookupResult::NoMatch => {
+            LookupResult::Partial => Action::None,
+            LookupResult::None => {
                 self.pending_keys.clear();
                 Action::None
             }
