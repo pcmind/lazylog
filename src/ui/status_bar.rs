@@ -79,6 +79,17 @@ impl StatusBar {
             ));
         }
 
+        // Boolean mode badge
+        if ctx.is_boolean {
+            spans.push(Span::styled(
+                " BOOLEAN ",
+                Style::default()
+                    .bg(Color::Magenta)
+                    .fg(Color::Black)
+                    .add_modifier(Modifier::BOLD),
+            ));
+        }
+
         // Active search query badge (in Normal mode)
         if matches!(cmd.mode, Mode::Normal)
             && let Some(q) = &cmd.search_query
@@ -146,6 +157,7 @@ impl StatusBar {
                                 ActionId::ToggleNegate => ctx.is_negated,
                                 ActionId::ToggleCaseSensitive => ctx.is_case_sensitive,
                                 ActionId::ToggleInterleave => ctx.show_bookmarks,
+                                ActionId::ToggleBoolean => ctx.is_boolean,
                                 _ => false,
                             };
 
@@ -170,20 +182,16 @@ impl StatusBar {
                 hints_spans.push(Span::styled("Cancel  ", Style::default().fg(Color::White)));
                 hints_spans.push(Span::styled("[Enter] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Confirm  ", Style::default().fg(Color::White)));
-                hints_spans.push(Span::styled(
-                    format!("> {}", cmd.filter_input),
-                    Style::default().fg(Color::Yellow),
-                ));
+                hints_spans.push(Span::styled("> ", Style::default().fg(Color::Yellow)));
+                render_input_with_cursor(&cmd.filter_input, cmd.filter_cursor, &mut hints_spans);
             }
             Mode::Search => {
                 hints_spans.push(Span::styled("[Esc] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Cancel  ", Style::default().fg(Color::White)));
                 hints_spans.push(Span::styled("[Enter] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Confirm  ", Style::default().fg(Color::White)));
-                hints_spans.push(Span::styled(
-                    format!("/ {}", cmd.search_input),
-                    Style::default().fg(Color::Yellow),
-                ));
+                hints_spans.push(Span::styled("/ ", Style::default().fg(Color::Yellow)));
+                render_input_with_cursor(&cmd.search_input, cmd.search_cursor, &mut hints_spans);
             }
             Mode::Help => {
                 hints_spans.push(Span::styled("[Esc] ", Style::default().fg(Color::Cyan)));
@@ -209,5 +217,27 @@ impl StatusBar {
 
         Paragraph::new(Line::from(spans))
             .style(Style::default().bg(Color::DarkGray).fg(Color::White))
+    }
+}
+
+fn render_input_with_cursor(input: &str, cursor: usize, spans: &mut Vec<Span<'static>>) {
+    let chars: Vec<char> = input.chars().collect();
+    if cursor >= chars.len() {
+        spans.push(Span::styled(input.to_string(), Style::default().fg(Color::Yellow)));
+        spans.push(Span::styled(
+            " ",
+            Style::default().bg(Color::White).fg(Color::Black),
+        ));
+    } else {
+        let before: String = chars[..cursor].iter().collect();
+        let current: String = chars[cursor].to_string();
+        let after: String = chars[cursor + 1..].iter().collect();
+ 
+        spans.push(Span::styled(before, Style::default().fg(Color::Yellow)));
+        spans.push(Span::styled(
+            current,
+            Style::default().bg(Color::White).fg(Color::Black),
+        ));
+        spans.push(Span::styled(after, Style::default().fg(Color::Yellow)));
     }
 }

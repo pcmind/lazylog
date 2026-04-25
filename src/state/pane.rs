@@ -20,6 +20,7 @@ pub struct Pane {
     pub task_generation: Arc<AtomicUsize>,
     pub parent_pane: Option<usize>,
     pub is_pinned: bool,
+    pub is_boolean: bool,
 }
 
 impl Pane {
@@ -40,6 +41,7 @@ impl Pane {
             task_generation: Arc::new(AtomicUsize::new(0)),
             parent_pane: None,
             is_pinned: false,
+            is_boolean: is_filter,
         }
     }
 

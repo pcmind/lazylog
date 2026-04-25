@@ -490,6 +490,16 @@ impl KeyRegistry {
             BindingContext::FilterPane,
             true,
         );
+        push2(
+            &mut bindings,
+            'e',
+            'l',
+            ActionId::ToggleBoolean,
+            "Boolean",
+            "Toggle boolean logic mode",
+            BindingContext::FilterPane,
+            true,
+        );
 
         // Visual mode bindings (visible)
         push1(

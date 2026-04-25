@@ -151,6 +151,7 @@ impl Tab {
         let is_regex = pane.is_regex;
         let is_negated = pane.is_negated;
         let is_case_sensitive = pane.is_case_sensitive;
+        let is_boolean = pane.is_boolean;
         let matched_lines = pane.matched_lines.clone();
 
         let expected_gen = pane
@@ -179,6 +180,7 @@ impl Tab {
             task_generation,
             expected_gen,
             parent_matched,
+            is_boolean,
         });
     }
 }

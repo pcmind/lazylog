@@ -45,6 +45,7 @@ pub enum ActionId {
     ToggleFollow,
     // Line detail
     ShowLineDetail,
+    ToggleBoolean,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -101,6 +102,7 @@ pub enum Action {
     // Follow
     ToggleFollow,
     ShowLineDetail,
+    ToggleBoolean,
     None,
 }
 

@@ -7,12 +7,14 @@ use crate::state::action::{Action, ActionId, FilterIntent, Mode};
 pub struct CommandHandler {
     pub mode: Mode,
     pub filter_input: String,
+    pub filter_cursor: usize,
     pub filter_intent: FilterIntent,
     pub help_selected: usize,
     pub pending_keys: Vec<KeyCombo>,
     pub registry: KeyRegistry,
     // Search state
     pub search_input: String,
+    pub search_cursor: usize,
     pub search_query: Option<String>,
     // Help filter state
     pub help_filter: String,
@@ -24,11 +26,13 @@ impl CommandHandler {
         Self {
             mode: Mode::Normal,
             filter_input: String::new(),
+            filter_cursor: 0,
             filter_intent: FilterIntent::New,
             help_selected: 0,
             pending_keys: Vec::new(),
             registry: KeyRegistry::default_bindings(),
             search_input: String::new(),
+            search_cursor: 0,
             search_query: None,
             help_filter: String::new(),
             detail_text: None,
@@ -120,21 +124,69 @@ impl CommandHandler {
             KeyCode::Esc => {
                 self.mode = Mode::Normal;
                 self.filter_input.clear();
+                self.filter_cursor = 0;
                 Action::None
             }
             KeyCode::Enter => {
                 self.mode = Mode::Normal;
                 let query = self.filter_input.clone();
                 self.filter_input.clear();
+                self.filter_cursor = 0;
                 let intent = self.filter_intent;
                 Action::SubmitFilter(query, intent)
             }
             KeyCode::Backspace => {
-                self.filter_input.pop();
+                if self.filter_cursor > 0 {
+                    let byte_idx = self
+                        .filter_input
+                        .char_indices()
+                        .nth(self.filter_cursor - 1)
+                        .map(|(i, _)| i)
+                        .unwrap();
+                    self.filter_input.remove(byte_idx);
+                    self.filter_cursor -= 1;
+                }
+                Action::None
+            }
+            KeyCode::Delete => {
+                if self.filter_cursor < self.filter_input.chars().count() {
+                    let byte_idx = self
+                        .filter_input
+                        .char_indices()
+                        .nth(self.filter_cursor)
+                        .map(|(i, _)| i)
+                        .unwrap();
+                    self.filter_input.remove(byte_idx);
+                }
+                Action::None
+            }
+            KeyCode::Left => {
+                self.filter_cursor = self.filter_cursor.saturating_sub(1);
+                Action::None
+            }
+            KeyCode::Right => {
+                if self.filter_cursor < self.filter_input.chars().count() {
+                    self.filter_cursor += 1;
+                }
+                Action::None
+            }
+            KeyCode::Home => {
+                self.filter_cursor = 0;
+                Action::None
+            }
+            KeyCode::End => {
+                self.filter_cursor = self.filter_input.chars().count();
                 Action::None
             }
             KeyCode::Char(c) => {
-                self.filter_input.push(c);
+                let byte_idx = self
+                    .filter_input
+                    .char_indices()
+                    .nth(self.filter_cursor)
+                    .map(|(i, _)| i)
+                    .unwrap_or(self.filter_input.len());
+                self.filter_input.insert(byte_idx, c);
+                self.filter_cursor += 1;
                 Action::None
             }
             _ => Action::None,
@@ -146,12 +198,14 @@ impl CommandHandler {
             KeyCode::Esc => {
                 self.mode = Mode::Normal;
                 self.search_input.clear();
+                self.search_cursor = 0;
                 Action::None
             }
             KeyCode::Enter => {
                 self.mode = Mode::Normal;
                 let query = self.search_input.clone();
                 self.search_input.clear();
+                self.search_cursor = 0;
                 if query.is_empty() {
                     self.search_query = None;
                     Action::ClearSearch
@@ -161,11 +215,57 @@ impl CommandHandler {
                 }
             }
             KeyCode::Backspace => {
-                self.search_input.pop();
+                if self.search_cursor > 0 {
+                    let byte_idx = self
+                        .search_input
+                        .char_indices()
+                        .nth(self.search_cursor - 1)
+                        .map(|(i, _)| i)
+                        .unwrap();
+                    self.search_input.remove(byte_idx);
+                    self.search_cursor -= 1;
+                }
+                Action::None
+            }
+            KeyCode::Delete => {
+                if self.search_cursor < self.search_input.chars().count() {
+                    let byte_idx = self
+                        .search_input
+                        .char_indices()
+                        .nth(self.search_cursor)
+                        .map(|(i, _)| i)
+                        .unwrap();
+                    self.search_input.remove(byte_idx);
+                }
+                Action::None
+            }
+            KeyCode::Left => {
+                self.search_cursor = self.search_cursor.saturating_sub(1);
+                Action::None
+            }
+            KeyCode::Right => {
+                if self.search_cursor < self.search_input.chars().count() {
+                    self.search_cursor += 1;
+                }
+                Action::None
+            }
+            KeyCode::Home => {
+                self.search_cursor = 0;
+                Action::None
+            }
+            KeyCode::End => {
+                self.search_cursor = self.search_input.chars().count();
                 Action::None
             }
             KeyCode::Char(c) => {
-                self.search_input.push(c);
+                let byte_idx = self
+                    .search_input
+                    .char_indices()
+                    .nth(self.search_cursor)
+                    .map(|(i, _)| i)
+                    .unwrap_or(self.search_input.len());
+                self.search_input.insert(byte_idx, c);
+                self.search_cursor += 1;
                 Action::None
             }
             _ => Action::None,
@@ -304,6 +404,7 @@ impl CommandHandler {
             ActionId::PrevSearchResult => Action::PrevSearchResult,
             ActionId::ToggleFollow => Action::ToggleFollow,
             ActionId::TogglePinFilter => Action::TogglePinFilter,
+            ActionId::ToggleBoolean => Action::ToggleBoolean,
             ActionId::ShowLineDetail => Action::ShowLineDetail,
         }
     }

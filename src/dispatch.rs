@@ -143,13 +143,23 @@ pub async fn dispatch(
                 }
             }
         }
+        Action::ToggleBoolean => {
+            if let Some(tab) = app.active_tab_mut() {
+                let ap = tab.active_pane;
+                if tab.panes[ap].is_filter {
+                    tab.panes[ap].is_boolean = !tab.panes[ap].is_boolean;
+                    tab.update_filter_pane(ap);
+                }
+            }
+        }
         Action::EditFilter => {
             if let Some(tab) = app.active_tab() {
                 let ap = tab.active_pane;
                 if tab.panes[ap].is_filter {
                     cmd_handler.mode = Mode::Filter;
-                    cmd_handler.filter_input =
-                        tab.panes[ap].filter_query.clone().unwrap_or_default();
+                    let query = tab.panes[ap].filter_query.clone().unwrap_or_default();
+                    cmd_handler.filter_input = query.clone();
+                    cmd_handler.filter_cursor = query.chars().count();
                 }
             }
         }
@@ -269,11 +279,12 @@ pub async fn dispatch(
                 }
             }
         }
-        Action::BeginSearch
-        | Action::ClearSearch
-        | Action::EnterVisual
-        | Action::ShowHelp
-        | Action::None => {}
+        Action::BeginSearch => {
+            cmd_handler.search_input.clear();
+            cmd_handler.search_cursor = 0;
+            cmd_handler.mode = Mode::Search;
+        }
+        Action::ClearSearch | Action::EnterVisual | Action::ShowHelp | Action::None => {}
     }
 }
 

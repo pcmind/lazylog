@@ -284,6 +284,7 @@ async fn prepare_frame(
             is_case_sensitive: active_pane.is_case_sensitive,
             is_pinned: active_pane.is_pinned,
             show_bookmarks: active_pane.show_bookmarks,
+            is_boolean: active_pane.is_boolean,
         }
     } else {
         RenderContext {
@@ -297,6 +298,7 @@ async fn prepare_frame(
             is_case_sensitive: false,
             is_pinned: false,
             show_bookmarks: false,
+            is_boolean: false,
         }
     };
 

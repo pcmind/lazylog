@@ -14,6 +14,7 @@ pub struct FilterParams {
     pub task_generation: Arc<AtomicUsize>,
     pub expected_gen: usize,
     pub parent_matched: Option<Arc<RwLock<Vec<usize>>>>,
+    pub is_boolean: bool,
 }
 
 /// Spawns a background task that scans lines for matches and populates `matched_lines`.
@@ -29,6 +30,7 @@ pub fn spawn_filter_task(params: FilterParams) {
         task_generation,
         expected_gen,
         parent_matched,
+        is_boolean,
     } = params;
     tokio::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
@@ -44,22 +46,46 @@ pub fn spawn_filter_task(params: FilterParams) {
             return;
         }
 
-        let query_regex = if is_regex {
-            regex::bytes::RegexBuilder::new(&query)
-                .case_insensitive(!is_case_sensitive)
-                .build()
-                .ok()
+        enum Matcher {
+            Regex(regex::bytes::Regex),
+            Boolean(crate::io::query::CompiledExpr),
+        }
+
+        impl Matcher {
+            fn is_match(&self, content: &[u8]) -> bool {
+                match self {
+                    Matcher::Regex(r) => r.is_match(content),
+                    Matcher::Boolean(e) => e.matches(content),
+                }
+            }
+        }
+
+        let matcher = if is_boolean {
+            let q = crate::io::query::QueryExpr::parse(&query);
+            let compiled = q.and_then(|expr| expr.compile(is_regex, is_case_sensitive));
+            match compiled {
+                Some(c) => Matcher::Boolean(c),
+                None => return,
+            }
         } else {
-            regex::bytes::RegexBuilder::new(&regex::escape(&query))
-                .case_insensitive(!is_case_sensitive)
-                .build()
-                .ok()
+            let query_regex = if is_regex {
+                regex::bytes::RegexBuilder::new(&query)
+                    .case_insensitive(!is_case_sensitive)
+                    .build()
+                    .ok()
+            } else {
+                regex::bytes::RegexBuilder::new(&regex::escape(&query))
+                    .case_insensitive(!is_case_sensitive)
+                    .build()
+                    .ok()
+            };
+            match query_regex {
+                Some(r) => Matcher::Regex(r),
+                None => return,
+            }
         };
 
-        let query_regex = match query_regex {
-            Some(r) => r,
-            None => return,
-        };
+        let matcher = Arc::new(matcher);
 
         // Open std::fs::File for cross-platform synchronous operations in spawn_blocking
         let std_file = match std::fs::File::open(&filepath) {
@@ -96,7 +122,7 @@ pub fn spawn_filter_task(params: FilterParams) {
             // Bound processing batch to keep the UI updating
             let batch_end = std::cmp::min(target_len, last_processed + 100_000);
 
-            let query_regex = query_regex.clone();
+            let matcher = matcher.clone();
             let mut std_file_clone = match std_file.try_clone() {
                 Ok(f) => f,
                 Err(_) => return,
@@ -136,8 +162,8 @@ pub fn spawn_filter_task(params: FilterParams) {
                             if std_file_clone.seek(std::io::SeekFrom::Start(start)).is_ok()
                                 && std_file_clone.read_exact(&mut buf).is_ok()
                             {
-                                let mut matched = query_regex.is_match(&buf);
-
+                                let mut matched = matcher.is_match(&buf);
+ 
                                 if is_negated {
                                     matched = !matched;
                                 }
@@ -183,7 +209,7 @@ pub fn spawn_filter_task(params: FilterParams) {
 
                                     if line_end <= buf.len() {
                                         let content = &buf[line_start..line_end];
-                                        let mut matched = query_regex.is_match(content);
+                                        let mut matched = matcher.is_match(content);
                                         if is_negated {
                                             matched = !matched;
                                         }

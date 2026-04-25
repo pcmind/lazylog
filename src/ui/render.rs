@@ -25,6 +25,7 @@ pub struct RenderContext {
     pub is_case_sensitive: bool,
     pub is_pinned: bool,
     pub show_bookmarks: bool,
+    pub is_boolean: bool,
 }
 
 /// Split a line's text into styled spans, highlighting all occurrences of `query`
@@ -199,16 +200,18 @@ pub fn draw(
                 let n_flag = if pane.is_negated { "N" } else { "-" };
                 let b_flag = if pane.show_bookmarks { "B" } else { "-" };
                 let c_flag = if pane.is_case_sensitive { "C" } else { "-" };
+                let l_flag = if pane.is_boolean { "L" } else { "-" };
                 let indicator = if is_collapsed { "▶" } else { "▼" };
                 format!(
-                    " {} [{}] Filter: {} [{}/{}/{}/{}] ",
+                    " {} [{}] Filter: {} [{}/{}/{}/{}/{}] ",
                     indicator,
                     i,
                     pane.filter_query.as_deref().unwrap_or("*"),
                     r_flag,
                     n_flag,
                     b_flag,
-                    c_flag
+                    c_flag,
+                    l_flag
                 )
             } else {
                 let follow_mark = if pane.is_following { " ⟳" } else { "" };
