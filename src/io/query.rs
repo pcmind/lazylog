@@ -177,7 +177,15 @@ fn parse_not(tokens: &mut std::iter::Peekable<std::vec::IntoIter<Token>>) -> Opt
 
 fn parse_primary(tokens: &mut std::iter::Peekable<std::vec::IntoIter<Token>>) -> Option<QueryExpr> {
     match tokens.next()? {
-        Token::Term(s) => Some(QueryExpr::Term(s)),
+        Token::Term(mut s) => {
+            while let Some(Token::Term(_)) = tokens.peek() {
+                if let Some(Token::Term(next_s)) = tokens.next() {
+                    s.push(' ');
+                    s.push_str(&next_s);
+                }
+            }
+            Some(QueryExpr::Term(s))
+        }
         Token::LParen => {
             let expr = parse_or(tokens)?;
             if let Some(Token::RParen) = tokens.next() {
@@ -250,5 +258,32 @@ mod tests {
         assert!(c.matches(b"bar"));
         assert!(!c.matches(b"foo baz"));
         assert!(!c.matches(b"qux"));
+    }
+
+    #[test]
+    fn test_parse_multiple_words() {
+        let q = QueryExpr::parse("usa xx").unwrap();
+        match q {
+            QueryExpr::Term(t) => assert_eq!(t, "usa xx"),
+            _ => panic!("Expected Term"),
+        }
+
+        let q2 = QueryExpr::parse("usa xx AND yy").unwrap();
+        match q2 {
+            QueryExpr::And(exprs) => {
+                assert_eq!(exprs.len(), 2);
+                if let QueryExpr::Term(ref t) = exprs[0] {
+                    assert_eq!(t, "usa xx");
+                } else {
+                    panic!("Expected Term for left side");
+                }
+                if let QueryExpr::Term(ref t) = exprs[1] {
+                    assert_eq!(t, "yy");
+                } else {
+                    panic!("Expected Term for right side");
+                }
+            }
+            _ => panic!("Expected And"),
+        }
     }
 }
