@@ -182,7 +182,12 @@ impl StatusBar {
                 hints_spans.push(Span::styled("Cancel  ", Style::default().fg(Color::White)));
                 hints_spans.push(Span::styled("[Enter] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Confirm  ", Style::default().fg(Color::White)));
-                hints_spans.push(Span::styled("> ", Style::default().fg(Color::Yellow)));
+                hints_spans.push(Span::styled(
+                    "> ",
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
+                ));
                 render_input_with_cursor(&cmd.filter_input, cmd.filter_cursor, &mut hints_spans);
             }
             Mode::Search => {
@@ -190,7 +195,12 @@ impl StatusBar {
                 hints_spans.push(Span::styled("Cancel  ", Style::default().fg(Color::White)));
                 hints_spans.push(Span::styled("[Enter] ", Style::default().fg(Color::Cyan)));
                 hints_spans.push(Span::styled("Confirm  ", Style::default().fg(Color::White)));
-                hints_spans.push(Span::styled("/ ", Style::default().fg(Color::Yellow)));
+                hints_spans.push(Span::styled(
+                    "/ ",
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
+                ));
                 render_input_with_cursor(&cmd.search_input, cmd.search_cursor, &mut hints_spans);
             }
             Mode::Help => {
@@ -222,8 +232,12 @@ impl StatusBar {
 
 fn render_input_with_cursor(input: &str, cursor: usize, spans: &mut Vec<Span<'static>>) {
     let chars: Vec<char> = input.chars().collect();
+    let text_style = Style::default()
+        .fg(Color::White)
+        .add_modifier(Modifier::BOLD);
+
     if cursor >= chars.len() {
-        spans.push(Span::styled(input.to_string(), Style::default().fg(Color::Yellow)));
+        spans.push(Span::styled(input.to_string(), text_style));
         spans.push(Span::styled(
             " ",
             Style::default().bg(Color::White).fg(Color::Black),
@@ -232,12 +246,12 @@ fn render_input_with_cursor(input: &str, cursor: usize, spans: &mut Vec<Span<'st
         let before: String = chars[..cursor].iter().collect();
         let current: String = chars[cursor].to_string();
         let after: String = chars[cursor + 1..].iter().collect();
- 
-        spans.push(Span::styled(before, Style::default().fg(Color::Yellow)));
+
+        spans.push(Span::styled(before, text_style));
         spans.push(Span::styled(
             current,
             Style::default().bg(Color::White).fg(Color::Black),
         ));
-        spans.push(Span::styled(after, Style::default().fg(Color::Yellow)));
+        spans.push(Span::styled(after, text_style));
     }
 }
