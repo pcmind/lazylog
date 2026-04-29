@@ -94,24 +94,50 @@ pub fn spawn_filter_task(params: FilterParams) {
         };
 
         let mut last_processed = 0;
+        let mut reusable_buf = Vec::new();
 
         loop {
             if task_generation.load(std::sync::atomic::Ordering::Relaxed) != expected_gen {
                 return;
             }
 
-            let current_offsets = { offsets.read().await.clone() };
+            let local_last = last_processed;
 
-            let source_indices = if let Some(ref arc) = parent_matched {
-                Some(arc.read().await.clone())
-            } else {
-                None
-            };
+            enum ChunkData {
+                ParentFiltered(Vec<(usize, u64, u64)>),
+                Sequential(Vec<u64>),
+            }
 
-            let target_len = if let Some(ref si) = source_indices {
-                si.len()
-            } else {
-                current_offsets.len().saturating_sub(1)
+            let (target_len, chunk_data) = {
+                if let Some(ref arc) = parent_matched {
+                    let p_guard = arc.read().await;
+                    let t_len = p_guard.len();
+                    if t_len <= local_last {
+                        (t_len, ChunkData::ParentFiltered(Vec::new()))
+                    } else {
+                        let b_end = std::cmp::min(t_len, local_last + 100_000);
+                        let p_chunk = &p_guard[local_last..b_end];
+                        let mut ranges = Vec::with_capacity(p_chunk.len());
+                        let o_guard = offsets.read().await;
+                        for &line in p_chunk {
+                            let start = o_guard.get(line).copied().unwrap_or(0);
+                            let end = o_guard.get(line + 1).copied().unwrap_or(start);
+                            ranges.push((line, start, end));
+                        }
+                        (t_len, ChunkData::ParentFiltered(ranges))
+                    }
+                } else {
+                    let o_guard = offsets.read().await;
+                    let t_len = o_guard.len().saturating_sub(1);
+                    if t_len <= local_last {
+                        (t_len, ChunkData::Sequential(Vec::new()))
+                    } else {
+                        let b_end = std::cmp::min(t_len, local_last + 100_000);
+                        let needed_len = std::cmp::min(o_guard.len(), b_end + 1);
+                        let slice = o_guard[local_last..needed_len].to_vec();
+                        (t_len, ChunkData::Sequential(slice))
+                    }
+                }
             };
 
             if target_len <= last_processed {
@@ -129,105 +155,160 @@ pub fn spawn_filter_task(params: FilterParams) {
             };
 
             // Run heavy work in spawn_blocking
-            let local_last = last_processed;
             let expected_gen_clone = expected_gen;
             let task_gen_clone = task_generation.clone();
 
+            let mut buf = reusable_buf;
+
             let batch_matches = tokio::task::spawn_blocking(move || {
                 use std::io::{Read, Seek};
-                let mut buf = Vec::new();
                 let mut new_matches = Vec::new();
                 let mut processed = 0;
 
-                if let Some(si) = &source_indices {
-                    for &absolute_line in si.iter().take(batch_end).skip(local_last) {
-                        if processed > 0
-                            && processed % 1000 == 0
-                            && task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
-                                != expected_gen_clone
-                        {
-                            break;
-                        }
-
-                        if absolute_line + 1 >= current_offsets.len() {
-                            break;
-                        }
-
-                        let start = current_offsets[absolute_line];
-                        let end = current_offsets[absolute_line + 1];
-                        let bytes = end.saturating_sub(start);
-
-                        if bytes > 0 {
-                            buf.resize(bytes as usize, 0);
-                            if std_file_clone.seek(std::io::SeekFrom::Start(start)).is_ok()
-                                && std_file_clone.read_exact(&mut buf).is_ok()
+                match chunk_data {
+                    ChunkData::ParentFiltered(ranges) => {
+                        for (absolute_line, start, end) in ranges {
+                            if processed > 0
+                                && processed % 1000 == 0
+                                && task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
+                                    != expected_gen_clone
                             {
-                                let mut matched = matcher.is_match(&buf);
- 
-                                if is_negated {
-                                    matched = !matched;
-                                }
+                                break;
+                            }
 
-                                if matched {
-                                    new_matches.push(absolute_line);
+                            let bytes = end.saturating_sub(start) as usize;
+
+                            if bytes > 0 {
+                                buf.clear();
+                                if std_file_clone.seek(std::io::SeekFrom::Start(start)).is_ok()
+                                    && std_file_clone
+                                        .by_ref()
+                                        .take(bytes as u64)
+                                        .read_to_end(&mut buf)
+                                        .is_ok()
+                                {
+                                    let mut matched = matcher.is_match(&buf);
+
+                                    if is_negated {
+                                        matched = !matched;
+                                    }
+
+                                    if matched {
+                                        new_matches.push(absolute_line);
+                                    }
                                 }
                             }
+
+                            processed += 1;
+                        }
+                    }
+                    ChunkData::Sequential(chunk_offsets) => {
+                        if chunk_offsets.len() < 2 {
+                            return (new_matches, processed, buf);
                         }
 
-                        processed += 1;
-                    }
-                } else {
-                    let first_line = local_last;
-                    let last_line = batch_end.saturating_sub(1);
-                    if first_line < current_offsets.len() {
-                        let chunk_start = current_offsets[first_line];
-                        let chunk_end = current_offsets
-                            [std::cmp::min(last_line + 1, current_offsets.len() - 1)];
-                        let chunk_size = chunk_end - chunk_start;
+                        let chunk_start = chunk_offsets[0];
+                        let chunk_end = chunk_offsets[chunk_offsets.len() - 1];
+                        let chunk_size = (chunk_end - chunk_start) as usize;
 
                         if chunk_size > 0 {
-                            buf.resize(chunk_size as usize, 0);
+                            buf.clear();
                             if std_file_clone
                                 .seek(std::io::SeekFrom::Start(chunk_start))
                                 .is_ok()
-                                && std_file_clone.read_exact(&mut buf).is_ok()
+                                && std_file_clone
+                                    .by_ref()
+                                    .take(chunk_size as u64)
+                                    .read_to_end(&mut buf)
+                                    .is_ok()
                             {
-                                for i in local_last..batch_end {
-                                    if processed > 0
-                                        && processed % 1000 == 0
-                                        && task_gen_clone.load(std::sync::atomic::Ordering::Relaxed)
-                                            != expected_gen_clone
-                                    {
-                                        break;
-                                    }
-                                    if i + 1 >= current_offsets.len() {
-                                        break;
-                                    }
+                                match &*matcher {
+                                    Matcher::Regex(re) => {
+                                        let mut match_it = re.find_iter(&buf).peekable();
+                                        for i in local_last..batch_end {
+                                            if processed > 0
+                                                && processed % 1000 == 0
+                                                && task_gen_clone
+                                                    .load(std::sync::atomic::Ordering::Relaxed)
+                                                    != expected_gen_clone
+                                            {
+                                                break;
+                                            }
+                                            let idx = i - local_last;
+                                            if idx + 1 >= chunk_offsets.len() {
+                                                break;
+                                            }
 
-                                    let line_start = (current_offsets[i] - chunk_start) as usize;
-                                    let line_end = (current_offsets[i + 1] - chunk_start) as usize;
+                                            let line_start =
+                                                (chunk_offsets[idx] - chunk_start) as usize;
+                                            let line_end =
+                                                (chunk_offsets[idx + 1] - chunk_start) as usize;
 
-                                    if line_end <= buf.len() {
-                                        let content = &buf[line_start..line_end];
-                                        let mut matched = matcher.is_match(content);
-                                        if is_negated {
-                                            matched = !matched;
-                                        }
-                                        if matched {
-                                            new_matches.push(i);
+                                            let mut has_match = false;
+                                            while let Some(m) = match_it.peek() {
+                                                if m.end() <= line_start {
+                                                    match_it.next();
+                                                } else if m.start() < line_end {
+                                                    has_match = true;
+                                                    break;
+                                                } else {
+                                                    break;
+                                                }
+                                            }
+
+                                            if is_negated {
+                                                has_match = !has_match;
+                                            }
+                                            if has_match {
+                                                new_matches.push(i);
+                                            }
+                                            processed += 1;
                                         }
                                     }
-                                    processed += 1;
+                                    Matcher::Boolean(_) => {
+                                        for i in local_last..batch_end {
+                                            if processed > 0
+                                                && processed % 1000 == 0
+                                                && task_gen_clone
+                                                    .load(std::sync::atomic::Ordering::Relaxed)
+                                                    != expected_gen_clone
+                                            {
+                                                break;
+                                            }
+                                            let idx = i - local_last;
+                                            if idx + 1 >= chunk_offsets.len() {
+                                                break;
+                                            }
+
+                                            let line_start =
+                                                (chunk_offsets[idx] - chunk_start) as usize;
+                                            let line_end =
+                                                (chunk_offsets[idx + 1] - chunk_start) as usize;
+
+                                            if line_end <= buf.len() {
+                                                let content = &buf[line_start..line_end];
+                                                let mut matched = matcher.is_match(content);
+                                                if is_negated {
+                                                    matched = !matched;
+                                                }
+                                                if matched {
+                                                    new_matches.push(i);
+                                                }
+                                            }
+                                            processed += 1;
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-                (new_matches, processed)
+                (new_matches, processed, buf)
             })
             .await;
 
-            if let Ok((new_matches, processed)) = batch_matches {
+            if let Ok((new_matches, processed, returned_buf)) = batch_matches {
+                reusable_buf = returned_buf;
                 if !new_matches.is_empty() {
                     let mut ml = matched_lines.write().await;
                     ml.extend(new_matches);
