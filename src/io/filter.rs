@@ -71,11 +71,13 @@ pub fn spawn_filter_task(params: FilterParams) {
             let query_regex = if is_regex {
                 regex::bytes::RegexBuilder::new(&query)
                     .case_insensitive(!is_case_sensitive)
+                    .crlf(true)
                     .build()
                     .ok()
             } else {
                 regex::bytes::RegexBuilder::new(&regex::escape(&query))
                     .case_insensitive(!is_case_sensitive)
+                    .crlf(true)
                     .build()
                     .ok()
             };

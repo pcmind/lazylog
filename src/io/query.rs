@@ -37,6 +37,7 @@ impl QueryExpr {
                 };
                 let re = RegexBuilder::new(&re_str)
                     .case_insensitive(!case_sensitive)
+                    .crlf(true)
                     .build()
                     .ok()?;
                 Some(CompiledExpr::Term(re))

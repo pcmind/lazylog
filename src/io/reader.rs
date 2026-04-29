@@ -74,7 +74,10 @@ impl AsyncReader {
         if file.read_exact(&mut buffer).await.is_ok() {
             let content = String::from_utf8_lossy(&buffer).to_string();
             // Split by newline and remove the last empty element if it ends in newline
-            let mut lines: Vec<String> = content.split('\n').map(|s| s.to_string()).collect();
+            let mut lines: Vec<String> = content
+                .split('\n')
+                .map(|s| s.trim_end_matches('\r').replace('\t', "    "))
+                .collect();
             if lines.last().map(|s| s.is_empty()).unwrap_or(false) {
                 lines.pop();
             }
@@ -135,7 +138,11 @@ impl AsyncReader {
             let mut buf = vec![0u8; bytes as usize];
             if file.read_exact(&mut buf).await.is_ok() {
                 let content = String::from_utf8_lossy(&buf).to_string();
-                results.push(content.trim_end_matches('\n').to_string());
+                results.push(
+                    content
+                        .trim_end_matches(&['\n', '\r'][..])
+                        .replace('\t', "    "),
+                );
             } else {
                 results.push(String::new());
             }
