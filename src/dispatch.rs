@@ -185,16 +185,7 @@ pub async fn dispatch(
         Action::ToggleBookmark => {
             if let Some(tab) = app.active_tab_mut() {
                 let ap = tab.active_pane;
-                let target_line = if tab.panes[ap].is_filter {
-                    let matched = tab.panes[ap].matched_lines.try_read();
-                    if let Ok(ml) = matched {
-                        ml.get(tab.panes[ap].selected_line).copied().unwrap_or(0)
-                    } else {
-                        0
-                    }
-                } else {
-                    tab.panes[ap].selected_line
-                };
+                let target_line = tab.absolute_line_sync(ap).unwrap_or(0);
 
                 if tab.bookmarks.contains(&target_line) {
                     tab.bookmarks.remove(&target_line);
@@ -261,15 +252,7 @@ pub async fn dispatch(
         Action::ShowLineDetail => {
             if let Some(tab) = app.active_tab_mut() {
                 let ap = tab.active_pane;
-                let target_line = if tab.panes[ap].is_filter {
-                    let matched = tab.panes[ap].matched_lines.read().await;
-                    matched
-                        .get(tab.panes[ap].selected_line)
-                        .copied()
-                        .unwrap_or(0)
-                } else {
-                    tab.panes[ap].selected_line
-                };
+                let target_line = tab.absolute_line(ap).await;
 
                 let lines = tab.reader.read_specific_lines(&[target_line]).await;
                 if let Some(line) = lines.first() {

@@ -107,19 +107,7 @@ async fn prepare_frame(
             file_size = offsets.last().copied().unwrap_or(0);
         }
 
-        current_line = {
-            let pane = &tab.panes[tab.active_pane];
-            if pane.is_filter {
-                let ml = pane.matched_lines.try_read();
-                if let Ok(ml_guard) = ml {
-                    ml_guard.get(pane.selected_line).copied().unwrap_or(0)
-                } else {
-                    0
-                }
-            } else {
-                pane.selected_line
-            }
-        };
+        current_line = tab.absolute_line_sync(tab.active_pane).unwrap_or(0);
 
         active_is_following = tab.panes[tab.active_pane].is_following;
         is_filter_pane = tab.panes[tab.active_pane].is_filter;
@@ -172,42 +160,44 @@ async fn prepare_frame(
                     let mut book_vec: Vec<usize> = tab.bookmarks.iter().copied().collect();
                     book_vec.sort_unstable();
 
-                    let mut union = Vec::with_capacity(matched_lines.len() + book_vec.len());
+                    let mut visible = Vec::with_capacity(pane.height);
                     let mut m_it = matched_lines.iter().peekable();
                     let mut b_it = book_vec.iter().peekable();
+                    let mut current_idx = 0;
 
-                    loop {
-                        match (m_it.peek(), b_it.peek()) {
+                    while visible.len() < pane.height {
+                        let value = match (m_it.peek(), b_it.peek()) {
                             (Some(&&m), Some(&&b)) => {
                                 if m < b {
-                                    union.push(m);
                                     m_it.next();
+                                    m
                                 } else if b < m {
-                                    union.push(b);
                                     b_it.next();
+                                    b
                                 } else {
-                                    union.push(m);
                                     m_it.next();
                                     b_it.next();
+                                    m
                                 }
                             }
                             (Some(&&m), None) => {
-                                union.push(m);
                                 m_it.next();
+                                m
                             }
                             (None, Some(&&b)) => {
-                                union.push(b);
                                 b_it.next();
+                                b
                             }
                             (None, None) => break,
+                        };
+
+                        if current_idx >= pane.scroll_offset {
+                            visible.push(value);
                         }
+                        current_idx += 1;
                     }
 
-                    union
-                        .into_iter()
-                        .skip(pane.scroll_offset)
-                        .take(pane.height)
-                        .collect()
+                    visible
                 } else {
                     matched_lines
                         .iter()

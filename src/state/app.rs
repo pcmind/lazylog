@@ -183,6 +183,111 @@ impl Tab {
             is_boolean,
         });
     }
+
+    pub fn absolute_line_sync(&self, pane_idx: usize) -> Option<usize> {
+        let pane = &self.panes[pane_idx];
+        if pane.is_filter {
+            if let Ok(matched) = pane.matched_lines.try_read() {
+                if pane.show_bookmarks {
+                    let mut book_vec: Vec<usize> = self.bookmarks.iter().copied().collect();
+                    book_vec.sort_unstable();
+
+                    let mut m_it = matched.iter().peekable();
+                    let mut b_it = book_vec.iter().peekable();
+                    let mut current_idx = 0;
+
+                    loop {
+                        let value = match (m_it.peek(), b_it.peek()) {
+                            (Some(&&m), Some(&&b)) => {
+                                if m < b {
+                                    m_it.next();
+                                    m
+                                } else if b < m {
+                                    b_it.next();
+                                    b
+                                } else {
+                                    m_it.next();
+                                    b_it.next();
+                                    m
+                                }
+                            }
+                            (Some(&&m), None) => {
+                                m_it.next();
+                                m
+                            }
+                            (None, Some(&&b)) => {
+                                b_it.next();
+                                b
+                            }
+                            (None, None) => return Some(0),
+                        };
+
+                        if current_idx == pane.selected_line {
+                            return Some(value);
+                        }
+                        current_idx += 1;
+                    }
+                } else {
+                    Some(matched.get(pane.selected_line).copied().unwrap_or(0))
+                }
+            } else {
+                None
+            }
+        } else {
+            Some(pane.selected_line)
+        }
+    }
+
+    pub async fn absolute_line(&self, pane_idx: usize) -> usize {
+        let pane = &self.panes[pane_idx];
+        if pane.is_filter {
+            let matched = pane.matched_lines.read().await;
+            if pane.show_bookmarks {
+                let mut book_vec: Vec<usize> = self.bookmarks.iter().copied().collect();
+                book_vec.sort_unstable();
+
+                let mut m_it = matched.iter().peekable();
+                let mut b_it = book_vec.iter().peekable();
+                let mut current_idx = 0;
+
+                loop {
+                    let value = match (m_it.peek(), b_it.peek()) {
+                        (Some(&&m), Some(&&b)) => {
+                            if m < b {
+                                m_it.next();
+                                m
+                            } else if b < m {
+                                b_it.next();
+                                b
+                            } else {
+                                m_it.next();
+                                b_it.next();
+                                m
+                            }
+                        }
+                        (Some(&&m), None) => {
+                            m_it.next();
+                            m
+                        }
+                        (None, Some(&&b)) => {
+                            b_it.next();
+                            b
+                        }
+                        (None, None) => return 0,
+                    };
+
+                    if current_idx == pane.selected_line {
+                        return value;
+                    }
+                    current_idx += 1;
+                }
+            } else {
+                matched.get(pane.selected_line).copied().unwrap_or(0)
+            }
+        } else {
+            pane.selected_line
+        }
+    }
 }
 
 pub struct App {
