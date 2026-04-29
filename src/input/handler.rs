@@ -12,10 +12,14 @@ pub struct CommandHandler {
     pub help_selected: usize,
     pub pending_keys: Vec<KeyCombo>,
     pub registry: KeyRegistry,
+    pub filter_history: Vec<String>,
+    pub filter_history_idx: Option<usize>,
     // Search state
     pub search_input: String,
     pub search_cursor: usize,
     pub search_query: Option<String>,
+    pub search_history: Vec<String>,
+    pub search_history_idx: Option<usize>,
     // Help filter state
     pub help_filter: String,
     pub detail_text: Option<String>,
@@ -31,9 +35,13 @@ impl CommandHandler {
             help_selected: 0,
             pending_keys: Vec::new(),
             registry: KeyRegistry::default_bindings(),
+            filter_history: Vec::new(),
+            filter_history_idx: None,
             search_input: String::new(),
             search_cursor: 0,
             search_query: None,
+            search_history: Vec::new(),
+            search_history_idx: None,
             help_filter: String::new(),
             detail_text: None,
         }
@@ -125,6 +133,7 @@ impl CommandHandler {
                 self.mode = Mode::Normal;
                 self.filter_input.clear();
                 self.filter_cursor = 0;
+                self.filter_history_idx = None;
                 Action::None
             }
             KeyCode::Enter => {
@@ -132,6 +141,18 @@ impl CommandHandler {
                 let query = self.filter_input.clone();
                 self.filter_input.clear();
                 self.filter_cursor = 0;
+
+                if !query.is_empty() {
+                    if let Some(pos) = self.filter_history.iter().position(|x| x == &query) {
+                        self.filter_history.remove(pos);
+                    }
+                    self.filter_history.push(query.clone());
+                    if self.filter_history.len() > 50 {
+                        self.filter_history.remove(0);
+                    }
+                }
+                self.filter_history_idx = None;
+
                 let intent = self.filter_intent;
                 Action::SubmitFilter(query, intent)
             }
@@ -189,6 +210,32 @@ impl CommandHandler {
                 self.filter_cursor += 1;
                 Action::None
             }
+            KeyCode::Up => {
+                if !self.filter_history.is_empty() {
+                    let new_idx = match self.filter_history_idx {
+                        None => self.filter_history.len().saturating_sub(1),
+                        Some(i) => i.saturating_sub(1),
+                    };
+                    self.filter_history_idx = Some(new_idx);
+                    self.filter_input = self.filter_history[new_idx].clone();
+                    self.filter_cursor = self.filter_input.chars().count();
+                }
+                Action::None
+            }
+            KeyCode::Down => {
+                if let Some(i) = self.filter_history_idx {
+                    if i + 1 < self.filter_history.len() {
+                        let new_idx = i + 1;
+                        self.filter_history_idx = Some(new_idx);
+                        self.filter_input = self.filter_history[new_idx].clone();
+                    } else {
+                        self.filter_history_idx = None;
+                        self.filter_input.clear();
+                    }
+                    self.filter_cursor = self.filter_input.chars().count();
+                }
+                Action::None
+            }
             _ => Action::None,
         }
     }
@@ -199,6 +246,7 @@ impl CommandHandler {
                 self.mode = Mode::Normal;
                 self.search_input.clear();
                 self.search_cursor = 0;
+                self.search_history_idx = None;
                 Action::None
             }
             KeyCode::Enter => {
@@ -206,12 +254,23 @@ impl CommandHandler {
                 let query = self.search_input.clone();
                 self.search_input.clear();
                 self.search_cursor = 0;
-                if query.is_empty() {
-                    self.search_query = None;
-                    Action::ClearSearch
-                } else {
+
+                if !query.is_empty() {
+                    if let Some(pos) = self.search_history.iter().position(|x| x == &query) {
+                        self.search_history.remove(pos);
+                    }
+                    self.search_history.push(query.clone());
+                    if self.search_history.len() > 50 {
+                        self.search_history.remove(0);
+                    }
+
                     self.search_query = Some(query.clone());
+                    self.search_history_idx = None;
                     Action::SubmitSearch(query)
+                } else {
+                    self.search_query = None;
+                    self.search_history_idx = None;
+                    Action::ClearSearch
                 }
             }
             KeyCode::Backspace => {
@@ -266,6 +325,32 @@ impl CommandHandler {
                     .unwrap_or(self.search_input.len());
                 self.search_input.insert(byte_idx, c);
                 self.search_cursor += 1;
+                Action::None
+            }
+            KeyCode::Up => {
+                if !self.search_history.is_empty() {
+                    let new_idx = match self.search_history_idx {
+                        None => self.search_history.len().saturating_sub(1),
+                        Some(i) => i.saturating_sub(1),
+                    };
+                    self.search_history_idx = Some(new_idx);
+                    self.search_input = self.search_history[new_idx].clone();
+                    self.search_cursor = self.search_input.chars().count();
+                }
+                Action::None
+            }
+            KeyCode::Down => {
+                if let Some(i) = self.search_history_idx {
+                    if i + 1 < self.search_history.len() {
+                        let new_idx = i + 1;
+                        self.search_history_idx = Some(new_idx);
+                        self.search_input = self.search_history[new_idx].clone();
+                    } else {
+                        self.search_history_idx = None;
+                        self.search_input.clear();
+                    }
+                    self.search_cursor = self.search_input.chars().count();
+                }
                 Action::None
             }
             _ => Action::None,
