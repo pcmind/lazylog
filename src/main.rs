@@ -221,84 +221,82 @@ async fn prepare_frame(
         active_is_following = tab.panes[tab.active_pane].is_following;
         is_filter_pane = tab.panes[tab.active_pane].is_filter;
 
-        // Sync filter panes to main pane if main pane is active
-        if tab.active_pane == 0 {
-            let target = tab.panes[0].selected_line;
-            for i in 1..tab.panes.len() {
-                let pane = &mut tab.panes[i];
-                if !pane.is_filter {
-                    continue;
-                }
-                let matched = pane.matched_lines.read().await;
-                let mut best_idx = 0;
-                if matched.is_empty() && (!pane.show_bookmarks || tab.bookmarks.is_empty()) {
-                    pane.selected_line = 0;
-                    continue;
-                }
-                if pane.show_bookmarks {
-                    let mut book_vec: Vec<usize> = tab.bookmarks.iter().copied().collect();
-                    book_vec.sort_unstable();
-                    let mut m_it = matched.iter().peekable();
-                    let mut b_it = book_vec.iter().peekable();
-                    let mut current_idx = 0;
-                    let mut min_diff = usize::MAX;
-                    loop {
-                        let value = match (m_it.peek(), b_it.peek()) {
-                            (Some(&&m), Some(&&b)) => {
-                                if m < b {
-                                    m_it.next();
-                                    m
-                                } else if b < m {
-                                    b_it.next();
-                                    b
-                                } else {
-                                    m_it.next();
-                                    b_it.next();
-                                    m
-                                }
-                            }
-                            (Some(&&m), None) => {
+        // Sync all inactive panes to the active pane's absolute line
+        let target = current_line;
+        for i in 0..tab.panes.len() {
+            if i == tab.active_pane {
+                continue;
+            }
+            let pane = &mut tab.panes[i];
+            if !pane.is_filter {
+                pane.selected_line = target;
+                continue;
+            }
+            let matched = pane.matched_lines.read().await;
+            let mut best_idx = 0;
+            if matched.is_empty() && (!pane.show_bookmarks || tab.bookmarks.is_empty()) {
+                pane.selected_line = 0;
+                continue;
+            }
+            if pane.show_bookmarks {
+                let mut book_vec: Vec<usize> = tab.bookmarks.iter().copied().collect();
+                book_vec.sort_unstable();
+                let mut m_it = matched.iter().peekable();
+                let mut b_it = book_vec.iter().peekable();
+                let mut current_idx = 0;
+                let mut min_diff = usize::MAX;
+                loop {
+                    let value = match (m_it.peek(), b_it.peek()) {
+                        (Some(&&m), Some(&&b)) => {
+                            if m < b {
                                 m_it.next();
                                 m
-                            }
-                            (None, Some(&&b)) => {
+                            } else if b < m {
                                 b_it.next();
                                 b
-                            }
-                            (None, None) => break,
-                        };
-                        let diff = value.abs_diff(target);
-                        if diff < min_diff {
-                            min_diff = diff;
-                            best_idx = current_idx;
-                        } else if diff > min_diff {
-                            break;
-                        }
-                        current_idx += 1;
-                    }
-                } else {
-                    let idx_res = matched.binary_search(&target);
-                    best_idx = match idx_res {
-                        Ok(idx) => idx,
-                        Err(idx) => {
-                            if idx == 0 {
-                                0
-                            } else if idx == matched.len() {
-                                matched.len().saturating_sub(1)
                             } else {
-                                let d_next = matched[idx] - target;
-                                let d_prev = target - matched[idx - 1];
-                                if d_prev <= d_next {
-                                    idx - 1
-                                } else {
-                                    idx
-                                }
+                                m_it.next();
+                                b_it.next();
+                                m
                             }
                         }
+                        (Some(&&m), None) => {
+                            m_it.next();
+                            m
+                        }
+                        (None, Some(&&b)) => {
+                            b_it.next();
+                            b
+                        }
+                        (None, None) => break,
                     };
+                    let diff = value.abs_diff(target);
+                    if diff < min_diff {
+                        min_diff = diff;
+                        best_idx = current_idx;
+                    } else if diff > min_diff {
+                        break;
+                    }
+                    current_idx += 1;
                 }
-                pane.selected_line = best_idx;
+            } else {
+                let idx_res = matched.binary_search(&target);
+                best_idx = match idx_res {
+                    Ok(idx) => idx,
+                    Err(idx) => {
+                        if idx == 0 {
+                            0
+                        } else if idx == matched.len() {
+                            matched.len().saturating_sub(1)
+                        } else {
+                            let d_next = matched[idx] - target;
+                            let d_prev = target - matched[idx - 1];
+                            if d_prev <= d_next { idx - 1 } else { idx }
+                        }
+                    }
+                };
             }
+            pane.selected_line = best_idx;
         }
 
         // Update pane heights and scroll offsets
@@ -325,8 +323,7 @@ async fn prepare_frame(
             }
         }
 
-        // Fetch filter pane contents + sync main cursor
-        let mut sync_main_line: Option<usize> = None;
+        // Fetch filter pane contents
 
         for p_idx in 1..tab.panes.len() {
             let pane = &tab.panes[p_idx];
@@ -390,31 +387,12 @@ async fn prepare_frame(
                     .map(|(i, l)| {
                         let absolute_line = visible_indices[i];
                         let is_selected = (pane.scroll_offset + i) == pane.selected_line;
-                        if is_selected && tab.active_pane == p_idx {
-                            sync_main_line = Some(absolute_line);
-                        }
                         (absolute_line, is_selected, l)
                     })
                     .collect();
                 pane_contents.push(lines_with_info);
             } else {
                 pane_contents.push(Vec::new());
-            }
-        }
-
-        if let Some(target) = sync_main_line {
-            tab.panes[0].selected_line = target;
-            let height = tab.panes[0].height;
-            if height > 0 {
-                let padding = 3.min(height.saturating_sub(1) / 2);
-                if tab.panes[0].selected_line < tab.panes[0].scroll_offset + padding {
-                    tab.panes[0].scroll_offset = tab.panes[0].selected_line.saturating_sub(padding);
-                } else if tab.panes[0].selected_line
-                    >= tab.panes[0].scroll_offset + height.saturating_sub(padding)
-                {
-                    tab.panes[0].scroll_offset =
-                        (tab.panes[0].selected_line + padding + 1).saturating_sub(height);
-                }
             }
         }
 
