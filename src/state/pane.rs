@@ -21,6 +21,7 @@ pub struct Pane {
     pub parent_pane: Option<usize>,
     pub is_pinned: bool,
     pub is_boolean: bool,
+    pub height_percent: u16,
 }
 
 impl Pane {
@@ -42,6 +43,7 @@ impl Pane {
             parent_pane: None,
             is_pinned: false,
             is_boolean: is_filter,
+            height_percent: if is_filter { 30 } else { 70 },
         }
     }
 

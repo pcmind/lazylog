@@ -152,6 +152,20 @@ pub async fn dispatch(
                 }
             }
         }
+        Action::ResizeUp => {
+            if let Some(tab) = app.active_tab_mut() {
+                let ap = tab.active_pane;
+                tab.panes[ap].height_percent =
+                    tab.panes[ap].height_percent.saturating_add(5).min(95);
+            }
+        }
+        Action::ResizeDown => {
+            if let Some(tab) = app.active_tab_mut() {
+                let ap = tab.active_pane;
+                tab.panes[ap].height_percent =
+                    tab.panes[ap].height_percent.saturating_sub(5).max(5);
+            }
+        }
         Action::EditFilter => {
             if let Some(tab) = app.active_tab() {
                 let ap = tab.active_pane;

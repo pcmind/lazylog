@@ -23,6 +23,7 @@ pub struct CommandHandler {
     // Help filter state
     pub help_filter: String,
     pub detail_text: Option<String>,
+    pub dragging_pane: Option<usize>,
 }
 
 impl CommandHandler {
@@ -44,6 +45,7 @@ impl CommandHandler {
             search_history_idx: None,
             help_filter: String::new(),
             detail_text: None,
+            dragging_pane: None,
         }
     }
 
@@ -491,6 +493,8 @@ impl CommandHandler {
             ActionId::TogglePinFilter => Action::TogglePinFilter,
             ActionId::ToggleBoolean => Action::ToggleBoolean,
             ActionId::ShowLineDetail => Action::ShowLineDetail,
+            ActionId::ResizeUp => Action::ResizeUp,
+            ActionId::ResizeDown => Action::ResizeDown,
         }
     }
 }

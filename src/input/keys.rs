@@ -395,6 +395,27 @@ impl KeyRegistry {
             true,
         );
 
+        push1(
+            &mut bindings,
+            KeyCode::Up,
+            KeyModifiers::CONTROL,
+            ActionId::ResizeUp,
+            "Resize+",
+            "Increase pane height",
+            BindingContext::Always,
+            false,
+        );
+        push1(
+            &mut bindings,
+            KeyCode::Down,
+            KeyModifiers::CONTROL,
+            ActionId::ResizeDown,
+            "Resize-",
+            "Decrease pane height",
+            BindingContext::Always,
+            false,
+        );
+
         // Search (visible)
         push1(
             &mut bindings,

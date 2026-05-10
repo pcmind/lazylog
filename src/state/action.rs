@@ -46,6 +46,8 @@ pub enum ActionId {
     // Line detail
     ShowLineDetail,
     ToggleBoolean,
+    ResizeUp,
+    ResizeDown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,6 +105,8 @@ pub enum Action {
     ToggleFollow,
     ShowLineDetail,
     ToggleBoolean,
+    ResizeUp,
+    ResizeDown,
     None,
 }
 
