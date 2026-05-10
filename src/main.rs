@@ -108,23 +108,23 @@ async fn handle_mouse_event(
     }
 
     if let Some(tab) = app.active_tab_mut() {
-        if let Some(i) = cmd_handler.dragging_pane {
-            if let MouseEventKind::Drag(_) = mouse.kind {
-                if i > 0 && i < pane_rects.len() {
-                    let prev_i = i - 1;
-                    let total_h = pane_rects[prev_i].height + pane_rects[i].height;
-                    let total_p = tab.panes[prev_i].height_percent + tab.panes[i].height_percent;
+        if let Some(i) = cmd_handler.dragging_pane
+            && let MouseEventKind::Drag(_) = mouse.kind
+        {
+            if i > 0 && i < pane_rects.len() {
+                let prev_i = i - 1;
+                let total_h = pane_rects[prev_i].height + pane_rects[i].height;
+                let total_p = tab.panes[prev_i].height_percent + tab.panes[i].height_percent;
 
-                    let new_prev_h = (y as i16 - pane_rects[prev_i].y as i16).max(1) as u16;
-                    let new_prev_p =
-                        (new_prev_h as u32 * total_p as u32 / total_h.max(1) as u32) as u16;
-                    let new_prev_p = new_prev_p.clamp(5, total_p.saturating_sub(5));
+                let new_prev_h = (y as i16 - pane_rects[prev_i].y as i16).max(1) as u16;
+                let new_prev_p =
+                    (new_prev_h as u32 * total_p as u32 / total_h.max(1) as u32) as u16;
+                let new_prev_p = new_prev_p.clamp(5, total_p.saturating_sub(5));
 
-                    tab.panes[prev_i].height_percent = new_prev_p;
-                    tab.panes[i].height_percent = total_p.saturating_sub(new_prev_p);
-                }
-                return;
+                tab.panes[prev_i].height_percent = new_prev_p;
+                tab.panes[i].height_percent = total_p.saturating_sub(new_prev_p);
             }
+            return;
         }
 
         for (i, rect) in pane_rects.iter().enumerate() {
