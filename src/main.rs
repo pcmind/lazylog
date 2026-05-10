@@ -112,9 +112,84 @@ async fn prepare_frame(
         active_is_following = tab.panes[tab.active_pane].is_following;
         is_filter_pane = tab.panes[tab.active_pane].is_filter;
 
-        let mut collapsed_flags = Vec::with_capacity(tab.panes.len());
-        for i in 0..tab.panes.len() {
-            collapsed_flags.push(tab.is_pane_collapsed(i));
+        // Sync filter panes to main pane if main pane is active
+        if tab.active_pane == 0 {
+            let target = tab.panes[0].selected_line;
+            for i in 1..tab.panes.len() {
+                let pane = &mut tab.panes[i];
+                if !pane.is_filter {
+                    continue;
+                }
+                let matched = pane.matched_lines.read().await;
+                let mut best_idx = 0;
+                if matched.is_empty() && (!pane.show_bookmarks || tab.bookmarks.is_empty()) {
+                    pane.selected_line = 0;
+                    continue;
+                }
+                if pane.show_bookmarks {
+                    let mut book_vec: Vec<usize> = tab.bookmarks.iter().copied().collect();
+                    book_vec.sort_unstable();
+                    let mut m_it = matched.iter().peekable();
+                    let mut b_it = book_vec.iter().peekable();
+                    let mut current_idx = 0;
+                    let mut min_diff = usize::MAX;
+                    loop {
+                        let value = match (m_it.peek(), b_it.peek()) {
+                            (Some(&&m), Some(&&b)) => {
+                                if m < b {
+                                    m_it.next();
+                                    m
+                                } else if b < m {
+                                    b_it.next();
+                                    b
+                                } else {
+                                    m_it.next();
+                                    b_it.next();
+                                    m
+                                }
+                            }
+                            (Some(&&m), None) => {
+                                m_it.next();
+                                m
+                            }
+                            (None, Some(&&b)) => {
+                                b_it.next();
+                                b
+                            }
+                            (None, None) => break,
+                        };
+                        let diff = value.abs_diff(target);
+                        if diff < min_diff {
+                            min_diff = diff;
+                            best_idx = current_idx;
+                        } else if diff > min_diff {
+                            break;
+                        }
+                        current_idx += 1;
+                    }
+                } else {
+                    let idx_res = matched.binary_search(&target);
+                    best_idx = match idx_res {
+                        Ok(idx) => idx,
+                        Err(idx) => {
+                            if idx == 0 {
+                                0
+                            } else if idx == matched.len() {
+                                matched.len().saturating_sub(1)
+                            } else {
+                                let d_next = matched[idx] - target;
+                                let d_prev = target - matched[idx - 1];
+                                if d_prev <= d_next {
+                                    idx - 1
+                                } else {
+                                    idx
+                                }
+                            }
+                        }
+                    };
+                }
+                pane.selected_line = best_idx;
+            }
         }
 
         // Update pane heights and scroll offsets
@@ -149,7 +224,7 @@ async fn prepare_frame(
             }
         }
 
-        // Fetch filter pane contents + sync main pane cursor
+        // Fetch filter pane contents + sync main cursor
         let mut sync_main_line: Option<usize> = None;
 
         for p_idx in 1..tab.panes.len() {
