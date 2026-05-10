@@ -33,7 +33,6 @@ async fn main() -> Result<()> {
     let mut events = Events::new(Duration::from_millis(250));
     let mut app = state::app::App::new();
     let mut cmd_handler = input::handler::CommandHandler::new();
-    let mut last_pane_rects: Vec<Rect> = Vec::new();
 
     // If an argument is provided, load it as a tab
     if let Some(filepath) = std::env::args().nth(1) {
@@ -43,7 +42,6 @@ async fn main() -> Result<()> {
     loop {
         // --- Pre-render: gather data ---
         let (pane_contents, ctx, pane_rects) = prepare_frame(&mut app, &terminal).await;
-        last_pane_rects = pane_rects.clone();
 
         // --- Render ---
         terminal.draw(|f| {
@@ -69,7 +67,7 @@ async fn main() -> Result<()> {
                         mouse,
                         &mut app,
                         &mut cmd_handler,
-                        &last_pane_rects,
+                        &pane_rects,
                         ctx.total_lines,
                         ctx.current_line,
                     )
